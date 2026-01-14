@@ -29,6 +29,23 @@ export interface FuelRequest {
   approvedLiters?: number;
   stationId?: string;
   approvalDate?: string;
+  isFullTank?: boolean; // New field
+}
+
+export interface AdvanceType {
+  id: string;
+  name: string;
+}
+
+export interface AdvanceRequest {
+  id: string;
+  driverName: string;
+  requestDate: string;
+  amount: number;
+  typeId: string;
+  status: RequestStatus;
+  notes?: string;
+  approvalDate?: string;
 }
 
 export interface DriverAssignment {
@@ -47,13 +64,18 @@ export interface Driver {
   expiryDate: string; // Ngay het han
 }
 
+export interface VehicleType {
+  id: string;
+  name: string;
+}
+
 export interface Vehicle {
   id: string;
   licensePlate: string;
-  vehicleType: string;
+  vehicleType: string; // Stores the name or ID
   inspectionDate: string; // Ngay dang kiem
   inspectionExpiryDate: string; // Ngay het han dang kiem
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'DRIVERS' | 'VEHICLES';
+export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'VEHICLES' | 'REPORTS';

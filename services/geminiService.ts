@@ -2,11 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { FuelRequest, FuelPrice, RequestStatus } from "../types";
 
 const getGeminiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key not found");
-  }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const analyzeFuelData = async (
