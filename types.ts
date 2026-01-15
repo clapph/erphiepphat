@@ -77,5 +77,33 @@ export interface Vehicle {
   inspectionExpiryDate: string; // Ngay het han dang kiem
 }
 
+export type CargoType = 'CONT' | 'PALLET' | 'TRANSFER' | 'GLASS';
+
+export interface SalaryRecord {
+  id: string;
+  driverName: string;
+  transportDate: string; // Ngày VC
+  cargoType: CargoType; // Loại hàng
+  
+  // Locations
+  pickupWarehouse: string; // Kho Đóng / Nhập
+  pickupLocation: string; // Địa điểm Kho Đóng / Nhập
+  depotLocation: string; // Depot Lấy rỗng / Full
+  dropoffLocation: string; // Hạ Cont / Trả rỗng
+  
+  // Money
+  tripSalary: number; // Lương chuyến
+  handlingFee: number; // Tiền làm hàng
+  
+  // Dynamic Quantities
+  quantityCont20?: number;
+  quantityCont40?: number;
+  quantityPallet?: number;
+  quantityTons?: number; // Miểng chai (Tấn)
+  
+  notes?: string;
+}
+
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'VEHICLES' | 'REPORTS';
+// Added SALARY tab
+export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'VEHICLES' | 'SALARY' | 'REPORTS';
