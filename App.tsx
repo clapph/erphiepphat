@@ -23,19 +23,19 @@ import {
   IconCheckCircle, 
   IconXCircle, 
   IconPlus, 
-  IconUser, 
-  IconSparkles, 
-  IconTruck, 
-  IconUsers, 
-  IconHome, 
-  IconEdit, 
-  IconTrash, 
-  IconAlert, 
-  IconChartBar, 
-  IconDocument, 
-  IconCopy, 
-  IconCheck, 
-  IconWallet, 
+  IconUser,
+  IconSparkles,
+  IconTruck,
+  IconUsers,
+  IconHome,
+  IconEdit,
+  IconTrash,
+  IconAlert,
+  IconChartBar,
+  IconDocument,
+  IconCopy,
+  IconCheck,
+  IconWallet,
   IconCurrency
 } from './components/Icons';
 
@@ -232,7 +232,7 @@ export default function App() {
   // Data State
   const [requests, setRequests] = useState<FuelRequest[]>(MOCK_REQUESTS);
   const [prices, setPrices] = useState<FuelPrice[]>(MOCK_PRICES);
-  const [stations, setStations] = useState<GasStation[]>(MOCK_STATIONS);
+  const [stations] = useState<GasStation[]>(MOCK_STATIONS);
   const [assignments, setAssignments] = useState<DriverAssignment[]>(MOCK_ASSIGNMENTS);
   const [drivers, setDrivers] = useState<Driver[]>(MOCK_DRIVERS);
   const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES);
@@ -254,8 +254,6 @@ export default function App() {
   const [editingFuelPrice, setEditingFuelPrice] = useState<FuelPrice | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<DriverAssignment | null>(null);
   const [editingSalaryRecord, setEditingSalaryRecord] = useState<SalaryRecord | null>(null);
-  const [editingAdvanceType, setEditingAdvanceType] = useState<AdvanceType | null>(null);
-  const [editingStation, setEditingStation] = useState<GasStation | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -303,7 +301,7 @@ export default function App() {
   const [selectedSalaryIds, setSelectedSalaryIds] = useState<Set<string>>(new Set());
 
   // Driver Tab State
-  const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'SALARY' | 'REPORTS'>('FUEL');
+  const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'SALARY'>('FUEL');
 
   // New Request State (Driver)
   const [newRequestDate, setNewRequestDate] = useState(new Date().toISOString().split('T')[0]);
@@ -465,58 +463,19 @@ export default function App() {
       }
   };
   
-  const handleSaveAdvanceType = (e: React.FormEvent) => {
+  const handleAddAdvanceType = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const name = formData.get('name') as string;
     if (name) {
-      if (editingAdvanceType) {
-        setAdvanceTypes(advanceTypes.map(t => t.id === editingAdvanceType.id ? { ...t, name } : t));
-        setEditingAdvanceType(null);
-      } else {
-        setAdvanceTypes([...advanceTypes, { id: Math.random().toString(), name }]);
-      }
+      setAdvanceTypes([...advanceTypes, { id: Math.random().toString(), name }]);
       (e.target as HTMLFormElement).reset();
     }
-  };
-
-  const handleEditAdvanceType = (at: AdvanceType) => {
-    setEditingAdvanceType(at);
   };
   
   const handleDeleteAdvanceType = (id: string) => {
     if (window.confirm("Xóa loại tạm ứng này?")) {
       setAdvanceTypes(advanceTypes.filter(t => t.id !== id));
-      if (editingAdvanceType?.id === id) setEditingAdvanceType(null);
-    }
-  };
-
-  // --- Station Management ---
-  const handleSaveStation = (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const name = formData.get('name') as string;
-    const address = formData.get('address') as string;
-
-    if (name) {
-      if (editingStation) {
-        setStations(stations.map(s => s.id === editingStation.id ? { ...s, name, address } : s));
-        setEditingStation(null);
-      } else {
-        setStations([...stations, { id: Math.random().toString(), name, address }]);
-      }
-      (e.target as HTMLFormElement).reset();
-    }
-  };
-
-  const handleEditStation = (s: GasStation) => {
-    setEditingStation(s);
-  };
-
-  const handleDeleteStation = (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa cây xăng này?")) {
-      setStations(stations.filter(s => s.id !== id));
-      if (editingStation?.id === id) setEditingStation(null);
     }
   };
 
@@ -950,7 +909,7 @@ export default function App() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <IconCurrency className="w-6 h-6 text-[#2c4aa0]" /> Quản lý Lương chuyến
+                        <IconCurrency className="w-6 h-6 text-[#2c4aa0]" /> Quản lý Lương & Chi phí
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">Quản lý và lọc dữ liệu lương vận chuyển.</p>
                 </div>
@@ -1076,7 +1035,7 @@ export default function App() {
     <div className="space-y-8 animate-fade-in">
         <div>
             <h3 className="text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2 border-b pb-2">
-                <IconUsers className="w-5 h-5" /> Tài xế & Xe
+                <IconUsers className="w-5 h-5" /> Nhân sự & Điều vận
             </h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-6">
@@ -1256,7 +1215,7 @@ export default function App() {
 
         <div>
             <h3 className="text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2 border-b pb-2 pt-4">
-                <IconTruck className="w-5 h-5" /> Quản lý Phương tiện
+                <IconTruck className="w-5 h-5" /> Quản lý Đội xe
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="h-fit">
@@ -1424,36 +1383,17 @@ export default function App() {
                   <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <IconWallet className="w-5 h-5 text-[#2c4aa0]" /> Quản lý Loại tạm ứng
                   </h2>
-                  <form onSubmit={handleSaveAdvanceType} className="flex gap-2 mb-4 items-center">
-                      <input 
-                        name="name" 
-                        placeholder="Tên loại..." 
-                        required 
-                        key={editingAdvanceType?.id || 'new'}
-                        defaultValue={editingAdvanceType?.name}
-                        className="flex-1 p-2 text-sm border rounded outline-none focus:ring-1 focus:ring-[#2c4aa0]" 
-                      />
-                      <Button type="submit" variant="secondary" className="px-3 py-1 text-xs whitespace-nowrap">
-                        {editingAdvanceType ? <IconCheck className="w-4 h-4" /> : <IconPlus className="w-4 h-4" />}
-                      </Button>
-                      {editingAdvanceType && (
-                        <button type="button" onClick={() => setEditingAdvanceType(null)} className="text-gray-400 hover:text-red-500">
-                          <IconXCircle className="w-4 h-4" />
-                        </button>
-                      )}
+                  <form onSubmit={handleAddAdvanceType} className="flex gap-2 mb-4">
+                      <input name="name" placeholder="Tên loại (vd: Ăn uống)..." required className="flex-1 p-2 text-sm border rounded" />
+                      <Button type="submit" variant="secondary" className="px-3 py-1 text-xs whitespace-nowrap"><IconPlus className="w-4 h-4" /></Button>
                   </form>
                   <div className="max-h-40 overflow-y-auto space-y-1">
                       {advanceTypes.map(at => (
                           <div key={at.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm group">
                               <span>{at.name}</span>
-                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditAdvanceType(at)} className="text-blue-500 hover:text-blue-700">
-                                    <IconEdit className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => handleDeleteAdvanceType(at.id)} className="text-gray-400 hover:text-red-500">
-                                    <IconTrash className="w-4 h-4" />
-                                </button>
-                              </div>
+                              <button onClick={() => handleDeleteAdvanceType(at.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <IconTrash className="w-4 h-4" />
+                              </button>
                           </div>
                       ))}
                   </div>
@@ -1547,137 +1487,79 @@ export default function App() {
 
     return (
       <div className="space-y-8 animate-fade-in">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <IconTrendingUp className="w-5 h-5 text-[#2c4aa0]" />
-                  Quản lý giá dầu
-              </h2>
-              <form onSubmit={handleSaveFuelPrice} className="space-y-3 mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                      <div className="flex-1">
-                          <label className="text-xs text-gray-500">Ngày & Giờ áp dụng</label>
-                          <div className="flex gap-2">
-                            <input 
-                                name="date" 
-                                type="date" 
-                                required 
-                                key={editingFuelPrice ? `date-${editingFuelPrice.id}` : 'date-new'}
-                                defaultValue={editingFuelPrice?.date.split('T')[0]} 
-                                className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
-                            />
-                            <input 
-                                name="time" 
-                                type="time" 
-                                required 
-                                key={editingFuelPrice ? `time-${editingFuelPrice.id}` : 'time-new'}
-                                defaultValue={editingFuelPrice?.date.split('T')[1]} 
-                                className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
-                            />
-                          </div>
-                      </div>
-                      <div className="flex-1">
-                          <label className="text-xs text-gray-500">Giá (VNĐ/Lít)</label>
-                          <input 
-                              name="price" 
-                              type="number" 
-                              placeholder="Giá/Lít" 
-                              required 
-                              key={editingFuelPrice ? `price-${editingFuelPrice.id}` : 'price-new'}
-                              defaultValue={editingFuelPrice?.pricePerLiter} 
-                              className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
-                          />
-                      </div>
-                      <div className="md:col-span-2 flex gap-2">
-                          <Button variant="secondary" className="text-xs whitespace-nowrap flex-1" type="submit">
-                              {editingFuelPrice ? 'Cập nhật giá' : 'Thêm giá mới'}
-                          </Button>
-                          {editingFuelPrice && (
-                              <Button variant="ghost" className="text-xs" onClick={() => setEditingFuelPrice(null)}>Hủy</Button>
-                          )}
-                      </div>
-                  </div>
-              </form>
-              <div className="max-h-48 overflow-y-auto space-y-2">
-              {prices.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(p => (
-                  <div key={p.id} className="flex justify-between items-center text-xs p-2 bg-gray-50 rounded group">
-                      <div className="flex gap-6 items-center">
-                          <div className="flex flex-col">
-                              <span className="font-semibold text-gray-900">{formatDateTime(p.date)}</span>
-                          </div>
-                          <span className="font-bold text-[#2c4aa0] text-sm">{formatCurrency(p.pricePerLiter)}/L</span>
-                      </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEditFuelPrice(p)} className="text-blue-500 hover:text-blue-700" title="Sửa">
-                              <IconEdit className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDeletePrice(p.id)} className="text-red-400 hover:text-red-500" title="Xóa">
-                              <IconTrash className="w-3.5 h-3.5" />
-                          </button>
-                      </div>
-                  </div>
-              ))}
-              </div>
-          </Card>
-
-          <Card>
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <IconGasPump className="w-5 h-5 text-[#2c4aa0]" />
-                  Quản lý Cây xăng
-              </h2>
-              <form onSubmit={handleSaveStation} className="space-y-3 mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                      <div className="flex-1">
-                          <label className="text-xs text-gray-500">Tên trạm / Cây xăng</label>
-                          <input 
-                              name="name" 
-                              placeholder="VD: Petrolimex 01" 
-                              required 
-                              key={editingStation ? `st-name-${editingStation.id}` : 'st-name-new'}
-                              defaultValue={editingStation?.name} 
-                              className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
-                          />
-                      </div>
-                      <div className="flex-1">
-                          <label className="text-xs text-gray-500">Địa chỉ</label>
-                          <input 
-                              name="address" 
-                              placeholder="Địa chỉ..." 
-                              key={editingStation ? `st-addr-${editingStation.id}` : 'st-addr-new'}
-                              defaultValue={editingStation?.address} 
-                              className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
-                          />
-                      </div>
-                      <div className="md:col-span-2 flex gap-2">
-                          <Button variant="secondary" className="text-xs whitespace-nowrap flex-1" type="submit">
-                              {editingStation ? 'Cập nhật trạm' : 'Thêm trạm mới'}
-                          </Button>
-                          {editingStation && (
-                              <Button variant="ghost" className="text-xs" onClick={() => setEditingStation(null)}>Hủy</Button>
-                          )}
-                      </div>
-                  </div>
-              </form>
-              <div className="max-h-48 overflow-y-auto space-y-2">
-              {stations.map(s => (
-                  <div key={s.id} className="flex justify-between items-start text-xs p-2 bg-gray-50 rounded group">
-                      <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 text-sm">{s.name}</span>
-                          <span className="text-gray-500">{s.address || 'Không có địa chỉ'}</span>
-                      </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEditStation(s)} className="text-blue-500 hover:text-blue-700" title="Sửa">
-                              <IconEdit className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDeleteStation(s.id)} className="text-red-400 hover:text-red-500" title="Xóa">
-                              <IconTrash className="w-4 h-4" />
-                          </button>
-                      </div>
-                  </div>
-              ))}
-              </div>
-          </Card>
-        </div>
+        <Card>
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <IconTrendingUp className="w-5 h-5 text-[#2c4aa0]" />
+                Quản lý giá dầu
+            </h2>
+            <form onSubmit={handleSaveFuelPrice} className="space-y-3 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                    <div className="flex-1">
+                        <label className="text-xs text-gray-500">Ngày áp dụng</label>
+                        <input 
+                            name="date" 
+                            type="date" 
+                            required 
+                            key={editingFuelPrice ? `date-${editingFuelPrice.id}` : 'date-new'}
+                            defaultValue={editingFuelPrice?.date.split('T')[0]} 
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <label className="text-xs text-gray-500">Giờ áp dụng</label>
+                        <input 
+                            name="time" 
+                            type="time" 
+                            required 
+                            key={editingFuelPrice ? `time-${editingFuelPrice.id}` : 'time-new'}
+                            defaultValue={editingFuelPrice?.date.split('T')[1]} 
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <label className="text-xs text-gray-500">Giá (VNĐ/Lít)</label>
+                        <input 
+                            name="price" 
+                            type="number" 
+                            placeholder="Giá/Lít" 
+                            required 
+                            key={editingFuelPrice ? `price-${editingFuelPrice.id}` : 'price-new'}
+                            defaultValue={editingFuelPrice?.pricePerLiter} 
+                            className="w-full p-2 text-sm border rounded focus:ring-1 focus:ring-[#2c4aa0] outline-none" 
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="secondary" className="text-xs whitespace-nowrap flex-1" type="submit">
+                            {editingFuelPrice ? 'Cập nhật' : 'Thêm giá'}
+                        </Button>
+                        {editingFuelPrice && (
+                            <Button variant="ghost" className="text-xs" onClick={() => setEditingFuelPrice(null)}>Hủy</Button>
+                        )}
+                    </div>
+                </div>
+            </form>
+            <div className="max-h-48 overflow-y-auto space-y-2">
+            {prices.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(p => (
+                <div key={p.id} className="flex justify-between items-center text-xs p-2 bg-gray-50 rounded group">
+                    <div className="flex gap-6 items-center">
+                        <div className="flex flex-col">
+                            <span className="font-semibold text-gray-900">{formatDateTime(p.date)}</span>
+                            <span className="text-[10px] text-gray-400 uppercase">Ngày & Giờ hiệu lực</span>
+                        </div>
+                        <span className="font-bold text-[#2c4aa0] text-sm">{formatCurrency(p.pricePerLiter)}/L</span>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEditFuelPrice(p)} className="text-blue-500 hover:text-blue-700" title="Sửa">
+                            <IconEdit className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeletePrice(p.id)} className="text-red-400 hover:text-red-500" title="Xóa">
+                            <IconTrash className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+            ))}
+            </div>
+        </Card>
 
         <Card className="border-[#2c4aa0] border-2">
           <h2 className="text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2">
@@ -2054,40 +1936,17 @@ export default function App() {
   };
 
   const DriverView = () => {
-    const [dReportStart, setDReportStart] = useState('2023-10-01');
-    const [dReportEnd, setDReportEnd] = useState(new Date().toISOString().split('T')[0]);
-
-    const driverFuelHistory = useMemo(() => {
+    const driverHistory = useMemo(() => {
         return requests.filter(r => r.driverName === CURRENT_DRIVER_NAME)
                        .sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
     }, [requests]);
 
-    const driverAdvanceHistory = useMemo(() => {
-        return advanceRequests.filter(r => r.driverName === CURRENT_DRIVER_NAME)
-                              .sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
-    }, [advanceRequests]);
-
-    // Driver Specific Report Data
-    const driverReportData = useMemo(() => {
-        const fuel = requests.filter(r => r.driverName === CURRENT_DRIVER_NAME && r.status === RequestStatus.APPROVED && r.requestDate >= dReportStart && r.requestDate <= dReportEnd);
-        const advances = advanceRequests.filter(a => a.driverName === CURRENT_DRIVER_NAME && a.status === RequestStatus.APPROVED && a.requestDate >= dReportStart && a.requestDate <= dReportEnd);
-        const salaries = salaryRecords.filter(s => s.driverName === CURRENT_DRIVER_NAME && s.transportDate >= dReportStart && s.transportDate <= dReportEnd);
-
-        return {
-            totalFuel: fuel.reduce((s, r) => s + (r.approvedAmount || 0), 0),
-            totalAdvances: advances.reduce((s, a) => s + a.amount, 0),
-            totalSalary: salaries.reduce((s, sa) => s + sa.salary + sa.handlingFee, 0),
-            tripCount: salaries.length
-        };
-    }, [requests, advanceRequests, salaryRecords, dReportStart, dReportEnd]);
-
     return (
       <div className="max-w-md mx-auto space-y-6">
-        <div className="flex bg-white rounded-lg shadow-sm p-1 border sticky top-20 z-10">
+        <div className="flex bg-white rounded-lg shadow-sm p-1 border">
             <button onClick={() => setDriverTab('FUEL')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${driverTab === 'FUEL' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>Nhiên liệu</button>
             <button onClick={() => setDriverTab('ADVANCE')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${driverTab === 'ADVANCE' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>Tạm ứng</button>
             <button onClick={() => setDriverTab('SALARY')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${driverTab === 'SALARY' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>Lương</button>
-            <button onClick={() => setDriverTab('REPORTS')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${driverTab === 'REPORTS' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>Báo cáo</button>
         </div>
 
         {driverTab === 'FUEL' && (
@@ -2112,26 +1971,17 @@ export default function App() {
                 <h3 className="font-bold text-gray-700 flex items-center gap-2 px-1">
                     <IconTrendingUp className="w-4 h-4" /> Lịch sử & Thông tin duyệt dầu
                 </h3>
-                {driverFuelHistory.length === 0 ? (
+                {driverHistory.length === 0 ? (
                     <Card className="text-center py-10 text-gray-400 italic text-sm">Chưa có yêu cầu nào.</Card>
                 ) : (
-                    driverFuelHistory.map(req => (
+                    driverHistory.map(req => (
                         <Card key={req.id} className="p-4 border-l-4 border-[#2c4aa0] relative group">
                             <div className="flex justify-between items-start mb-2">
-                                {editingHistoryId !== req.id ? (
-                                    <>
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{formatDate(req.requestDate)}</div>
-                                            <div className="text-lg font-bold text-gray-800 font-mono mt-0.5">{req.licensePlate}</div>
-                                        </div>
-                                        <Badge status={req.status} />
-                                    </>
-                                ) : (
-                                    <div className="w-full flex justify-between items-center">
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{formatDate(req.requestDate)}</div>
-                                        <span className="text-xs font-bold text-blue-600">Đang sửa số tiền</span>
-                                    </div>
-                                )}
+                                <div>
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{formatDate(req.requestDate)}</div>
+                                    <div className="text-lg font-bold text-gray-800 font-mono mt-0.5">{req.licensePlate}</div>
+                                </div>
+                                <Badge status={req.status} />
                             </div>
 
                             {req.status === RequestStatus.APPROVED ? (
@@ -2167,152 +2017,6 @@ export default function App() {
             </div>
           </>
         )}
-
-        {driverTab === 'ADVANCE' && (
-          <>
-            <Card>
-                <h2 className="text-xl font-bold text-[#2c4aa0] mb-4 flex items-center gap-2"><IconWallet className="w-6 h-6" /> Yêu cầu tạm ứng</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền tạm ứng (VNĐ)</label>
-                    <input 
-                      type="number" 
-                      value={newAdvanceAmount} 
-                      onChange={(e) => setNewAdvanceAmount(e.target.value)} 
-                      placeholder="Ví dụ: 500000"
-                      className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-1 focus:ring-[#2c4aa0]" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Loại tạm ứng</label>
-                    <select 
-                      value={newAdvanceType} 
-                      onChange={(e) => setNewAdvanceType(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-lg outline-none bg-white"
-                    >
-                      <option value="">-- Chọn loại --</option>
-                      {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lý do / Ghi chú</label>
-                    <textarea 
-                      rows={2} 
-                      value={newAdvanceNote} 
-                      onChange={(e) => setNewAdvanceNote(e.target.value)} 
-                      placeholder="Chi tiết lý do cần tạm ứng..."
-                      className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-1 focus:ring-[#2c4aa0]" 
-                    />
-                  </div>
-                  <Button onClick={handleDriverAdvanceSubmit} className="w-full">Gửi yêu cầu tạm ứng</Button>
-                </div>
-            </Card>
-
-            <div className="space-y-3">
-              <h3 className="font-bold text-gray-700 flex items-center gap-2 px-1">
-                <IconTrendingUp className="w-4 h-4" /> Lịch sử tạm ứng
-              </h3>
-              {driverAdvanceHistory.length === 0 ? (
-                <Card className="text-center py-10 text-gray-400 italic text-sm">Chưa có yêu cầu tạm ứng nào.</Card>
-              ) : (
-                driverAdvanceHistory.map(req => (
-                  <Card key={req.id} className="p-4 border-l-4 border-orange-400">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{formatDate(req.requestDate)}</div>
-                        <div className="text-lg font-bold text-[#2c4aa0]">{formatCurrency(req.amount)}</div>
-                        <div className="text-sm text-gray-600 font-medium">{advanceTypes.find(t => t.id === req.typeId)?.name || 'Khác'}</div>
-                      </div>
-                      <Badge status={req.status} />
-                    </div>
-                    {req.notes && <div className="text-xs text-gray-500 italic mt-2">"{req.notes}"</div>}
-                    {req.approvalDate && (
-                      <div className="mt-3 pt-2 border-t border-dashed text-[10px] text-gray-400 font-bold uppercase">
-                        Đã xử lý ngày: {formatDate(req.approvalDate)}
-                      </div>
-                    )}
-                  </Card>
-                ))
-              )}
-            </div>
-          </>
-        )}
-
-        {driverTab === 'SALARY' && (
-          <div className="space-y-4">
-             <h2 className="text-xl font-bold text-[#2c4aa0] flex items-center gap-2 px-1"><IconCurrency className="w-6 h-6" /> Thông tin lương chuyến</h2>
-             {salaryRecords.filter(s => s.driverName === CURRENT_DRIVER_NAME).length === 0 ? (
-               <Card className="text-center py-10 text-gray-400 italic text-sm">Chưa có dữ liệu lương vận chuyển.</Card>
-             ) : (
-                salaryRecords.filter(s => s.driverName === CURRENT_DRIVER_NAME)
-                  .sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime())
-                  .map(s => (
-                    <Card key={s.id} className="p-4 border-t border-gray-100">
-                        <div className="flex justify-between items-center mb-3">
-                            <span className="text-xs font-bold text-gray-400 uppercase">{formatDate(s.transportDate)}</span>
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded">{s.cargoType}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <div className="text-[10px] text-gray-400 uppercase font-bold">Số Cont/DO</div>
-                                <div className="font-mono text-sm font-bold text-gray-800">{s.refNumber}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold">Thanh toán</div>
-                                <div className="font-bold text-[#2c4aa0]">{formatCurrency(s.salary + s.handlingFee)}</div>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between text-xs text-gray-500">
-                            <span>Lương: {formatCurrency(s.salary)}</span>
-                            <span>Làm hàng: {formatCurrency(s.handlingFee)}</span>
-                        </div>
-                    </Card>
-                  ))
-             )}
-          </div>
-        )}
-
-        {driverTab === 'REPORTS' && (
-          <div className="space-y-6">
-            <Card className="border-t-4 border-[#2c4aa0]">
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><IconChartBar className="w-6 h-6 text-[#2c4aa0]" /> Báo cáo của tôi</h2>
-                <div className="grid grid-cols-2 gap-3 mb-6 bg-gray-50 p-3 rounded-lg border">
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase">Từ ngày</label>
-                        <input type="date" value={dReportStart} onChange={e => setDReportStart(e.target.value)} className="w-full p-2 text-xs border rounded outline-none focus:ring-1 focus:ring-[#2c4aa0]" />
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase">Đến ngày</label>
-                        <input type="date" value={dReportEnd} onChange={e => setDReportEnd(e.target.value)} className="w-full p-2 text-xs border rounded outline-none focus:ring-1 focus:ring-[#2c4aa0]" />
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <div className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Thu nhập chuyến VC</div>
-                        <div className="text-2xl font-bold text-[#2c4aa0]">{formatCurrency(driverReportData.totalSalary)}</div>
-                        <div className="text-[10px] text-blue-600 font-medium mt-1">Tổng cộng {driverReportData.tripCount} chuyến hàng</div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-white border rounded-xl shadow-sm">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Nhiên liệu (Dầu)</div>
-                            <div className="text-lg font-bold text-gray-800">{formatCurrency(driverReportData.totalFuel)}</div>
-                        </div>
-                        <div className="p-4 bg-white border rounded-xl shadow-sm">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Tạm ứng đã nhận</div>
-                            <div className="text-lg font-bold text-orange-600">{formatCurrency(driverReportData.totalAdvances)}</div>
-                        </div>
-                    </div>
-                </div>
-            </Card>
-
-            <Card className="bg-gray-50 border-dashed border-2 flex flex-col items-center justify-center py-8 text-center">
-                <IconSparkles className="w-10 h-10 text-yellow-500 mb-2 opacity-50" />
-                <p className="text-xs text-gray-500 px-6 italic">Hệ thống đang thu thập dữ liệu để cung cấp thêm các phân tích hiệu suất cá nhân bằng AI.</p>
-            </Card>
-          </div>
-        )}
       </div>
     );
   };
@@ -2325,7 +2029,7 @@ export default function App() {
             <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'DASHBOARD' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconHome className="w-5 h-5" /> Tổng quan</button>
             <button onClick={() => setActiveTab('FUEL')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'FUEL' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconGasPump className="w-5 h-5" /> Nhiên liệu</button>
             <button onClick={() => setActiveTab('ADVANCES')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'ADVANCES' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconWallet className="w-5 h-5" /> Tạm ứng</button>
-            <button onClick={() => setActiveTab('SALARY')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'SALARY' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconCurrency className="w-5 h-5" /> Lương chuyến</button>
+            <button onClick={() => setActiveTab('SALARY')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'SALARY' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconCurrency className="w-5 h-5" /> Lương & Chi phí</button>
             <button onClick={() => setActiveTab('OPERATION')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'OPERATION' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconUsers className="w-5 h-5" /> Quản lý Vận hành</button>
             <button onClick={() => setActiveTab('REPORTS')} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'REPORTS' ? 'bg-[#2c4aa0] text-white' : 'text-gray-600 hover:bg-gray-50'}`}><IconChartBar className="w-5 h-5" /> Báo cáo thống kê</button>
           </div>
