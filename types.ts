@@ -6,7 +6,7 @@ export enum RequestStatus {
 
 export interface FuelPrice {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DDTHH:mm
   pricePerLiter: number;
 }
 
@@ -53,6 +53,7 @@ export interface DriverAssignment {
   driverName: string;
   licensePlate: string;
   startDate: string; // YYYY-MM-DD
+  endDate?: string;  // YYYY-MM-DD (Optional)
 }
 
 export interface Driver {
@@ -69,41 +70,48 @@ export interface VehicleType {
   name: string;
 }
 
+export type VehicleStatus = 'OPERATING' | 'INACTIVE';
+
 export interface Vehicle {
   id: string;
   licensePlate: string;
   vehicleType: string; // Stores the name or ID
   inspectionDate: string; // Ngay dang kiem
   inspectionExpiryDate: string; // Ngay het han dang kiem
+  status: VehicleStatus;
 }
 
 export type CargoType = 'CONT' | 'PALLET' | 'TRANSFER' | 'GLASS';
 
 export interface SalaryRecord {
   id: string;
-  driverName: string;
   transportDate: string; // Ngày VC
+  driverName: string; // Tài xế
   cargoType: CargoType; // Loại hàng
   
+  // Ref numbers
+  refNumber: string; // Số CONT / DO
+
+  // Quantities
+  quantity20: number; // SL Cont 20
+  quantity40: number; // SL Cont 40
+  quantityOther: number; // SL Pallet / Tấn
+
   // Locations
-  pickupWarehouse: string; // Kho Đóng / Nhập
-  pickupLocation: string; // Địa điểm Kho Đóng / Nhập
-  depotLocation: string; // Depot Lấy rỗng / Full
-  dropoffLocation: string; // Hạ Cont / Trả rỗng
+  pickupWarehouse: string; // Kho Đóng
+  deliveryWarehouse: string; // Kho Nhập
   
-  // Money
-  tripSalary: number; // Lương chuyến
-  handlingFee: number; // Tiền làm hàng
+  // Optional locations (Only for CONT)
+  depotLocation?: string; // Depot Lấy Rỗng/Full
+  returnLocation?: string; // Hạ Cont/Trả Rỗng
+
+  // Financials
+  salary: number; // Lương
+  handlingFee: number; // Làm hàng
   
-  // Dynamic Quantities
-  quantityCont20?: number;
-  quantityCont40?: number;
-  quantityPallet?: number;
-  quantityTons?: number; // Miểng chai (Tấn)
-  
-  notes?: string;
+  notes?: string; // Ghi chú
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-// Added SALARY tab
-export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'VEHICLES' | 'SALARY' | 'REPORTS';
+// Removed VEHICLES tab, merged into OPERATION
+export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'REPORTS' | 'SALARY';
