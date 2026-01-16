@@ -102,15 +102,17 @@ export interface SalaryRecord {
   quantityOther: number; // SL Pallet / Tấn
 
   // Locations
-  pickupWarehouse: string; // Kho Đóng
-  deliveryWarehouse: string; // Kho Nhập
+  pickupWarehouse: string; // Kho Đóng / Nhập
+  deliveryWarehouse: string; // Điểm Kho Đóng / Nhập
   
   // Optional locations (Only for CONT)
-  depotLocation?: string; // Depot Lấy Rỗng/Full
-  returnLocation?: string; // Hạ Cont/Trả Rỗng
+  depotLocation?: string; // Depot Lấy Rỗng / Full
+  returnLocation?: string; // Hạ Cont / Trả Rỗng
 
   // Financials
-  salary: number; // Lương
+  outOfPocketLRHR: number; // Chi hộ LR/HR
+  outOfPocketSC: number; // Chi hộ Cược SC
+  salary: number; // Lương chuyến
   handlingFee: number; // Làm hàng
   
   notes?: string; // Ghi chú
