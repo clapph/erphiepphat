@@ -48,6 +48,8 @@ export interface AdvanceRequest {
   status: RequestStatus;
   notes?: string;
   approvalDate?: string;
+  isSettled?: boolean; // Trạng thái hoàn ứng
+  settlementDate?: string; // Ngày hoàn ứng
 }
 
 export interface DriverAssignment {
@@ -123,4 +125,4 @@ export interface User {
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'SALARY' | 'USERS' | 'FUEL_SETTINGS';
+export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'SALARY' | 'USERS' | 'FUEL_SETTINGS';
