@@ -18,7 +18,6 @@ import {
   VehicleStatus,
   User
 } from './types';
-import { analyzeFuelData } from './services/geminiService';
 import { 
   IconGasPump, 
   IconTrendingUp, 
@@ -26,7 +25,6 @@ import {
   IconXCircle, 
   IconPlus, 
   IconUser, 
-  IconSparkles, 
   IconTruck, 
   IconUsers, 
   IconHome, 
@@ -247,9 +245,6 @@ export default function App() {
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>(MOCK_SALARY_RECORDS);
   
   // UI State
-  const [aiAnalysis, setAiAnalysis] = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [editingFuelPrice, setEditingFuelPrice] = useState<FuelPrice | null>(null);
@@ -458,18 +453,6 @@ export default function App() {
     if (window.confirm("Xóa cây xăng này?")) setStations(stations.filter(s => s.id !== id));
   };
 
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    try {
-      const result = await analyzeFuelData(requests, prices);
-      setAiAnalysis(result);
-    } catch (error) {
-      setAiAnalysis("Lỗi phân tích AI.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const handleDriverSubmit = () => {
     if (!autoAssignedVehicle) {
       alert('Bạn chưa được phân công xe cho ngày này. Vui lòng liên hệ Admin.');
@@ -631,13 +614,13 @@ export default function App() {
   };
 
   const handleAdminCreateAdvance = () => {
-    if (!adminAdvAmount || !adminAdvType || !adminAdvDriver) {
+    if (!adminAdvAmount || !adminAdvType || (!adminAdvDriver && currentUser?.role === 'ADMIN')) {
       alert("Vui lòng nhập đầy đủ thông tin tạm ứng.");
       return;
     }
     const newReq: AdvanceRequest = {
       id: Math.random().toString(36).substr(2, 9),
-      driverName: adminAdvDriver,
+      driverName: currentUser?.role === 'ADMIN' ? adminAdvDriver : currentUser?.fullName || '',
       requestDate: adminAdvDate,
       amount: parseFloat(adminAdvAmount),
       typeId: adminAdvType,
@@ -675,37 +658,6 @@ export default function App() {
             <div className="text-4xl font-black text-gray-800">{vehicles.filter(v=>v.status==='OPERATING').length} <span className="text-sm font-normal text-gray-400">phương tiện</span></div>
           </Card>
         </div>
-
-        <Card className="bg-gradient-to-br from-[#2c4aa0] to-[#1e3475] border-none text-white shadow-xl shadow-[#2c4aa0]/20">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
-                  <IconSparkles className="w-8 h-8 text-blue-200" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">AI Business Insight</h3>
-                  <p className="text-sm text-blue-100 opacity-80">Trợ lý ảo phân tích dữ liệu doanh nghiệp thời gian thực</p>
-                </div>
-              </div>
-              <Button variant="secondary" onClick={handleAnalyze} disabled={isAnalyzing} className="bg-white/10 border-white/20 text-white hover:bg-white/20 min-w-[150px]">
-                {isAnalyzing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Đang xử lý...</span>
-                  </div>
-                ) : 'Phân tích ngay'}
-              </Button>
-            </div>
-            {aiAnalysis ? (
-              <div className="text-sm leading-relaxed p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm animate-fade-in">
-                {aiAnalysis}
-              </div>
-            ) : (
-              <div className="p-12 text-center text-blue-100/40 italic border-2 border-dashed border-white/10 rounded-2xl">
-                Nhấn nút để bắt đầu phân tích dữ liệu nhiên liệu và vận hành...
-              </div>
-            )}
-        </Card>
     </div>
   );
 
@@ -835,7 +787,7 @@ export default function App() {
                             <th className="p-3 uppercase tracking-tighter">Loại hàng</th>
                             <th className="p-3 uppercase tracking-tighter">Số CONT / DO</th>
                             <th className="p-3 text-right">Lương chuyến</th>
-                            <th className="p-3 text-right">Làm hàng</th>
+                            <th className="p-3 text-right"> Làm hàng</th>
                             <th className="p-3 text-center">Tác vụ</th>
                         </tr>
                     </thead>
