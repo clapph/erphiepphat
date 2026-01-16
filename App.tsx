@@ -39,6 +39,13 @@ import {
   IconCurrency
 } from './components/Icons';
 
+// --- Custom Icons ---
+const IconKey = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+  </svg>
+);
+
 // --- Constants & Mock Data ---
 const BG_COLOR = '#f8fafc'; 
 
@@ -250,6 +257,7 @@ export default function App() {
   const [editingAssignment, setEditingAssignment] = useState<DriverAssignment | null>(null);
   const [editingSalaryRecord, setEditingSalaryRecord] = useState<SalaryRecord | null>(null);
   const [editingStation, setEditingStation] = useState<GasStation | null>(null);
+  const [editingAdvanceType, setEditingAdvanceType] = useState<AdvanceType | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<FuelRequest | null>(null);
@@ -279,6 +287,11 @@ export default function App() {
 
   const [newRequestDate, setNewRequestDate] = useState(new Date().toISOString().split('T')[0]);
   const [newRequestNote, setNewRequestNote] = useState('');
+
+  // Password State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [userToChangePassword, setUserToChangePassword] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
 
   // Advance state for admin
   const [adminAdvDriver, setAdminAdvDriver] = useState('');
@@ -338,6 +351,18 @@ export default function App() {
     setCurrentUser(null);
     setLoginUser('');
     setLoginPass('');
+  };
+
+  const handleUpdatePassword = () => {
+    if (!userToChangePassword || !newPassword) return;
+    setUsers(users.map(u => u.id === userToChangePassword.id ? { ...u, password: newPassword } : u));
+    if (currentUser?.id === userToChangePassword.id) {
+        setCurrentUser({ ...currentUser, password: newPassword });
+    }
+    setIsPasswordModalOpen(false);
+    setUserToChangePassword(null);
+    setNewPassword('');
+    alert("Đã cập nhật mật khẩu thành công!");
   };
 
   // --- CRUD Actions ---
@@ -455,6 +480,25 @@ export default function App() {
 
   const handleDeleteStation = (id: string) => {
     if (window.confirm("Xóa cây xăng này?")) setStations(stations.filter(s => s.id !== id));
+  };
+
+  const handleSaveAdvanceType = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const name = formData.get('name') as string;
+    if (name) {
+      if (editingAdvanceType) {
+        setAdvanceTypes(advanceTypes.map(t => t.id === editingAdvanceType.id ? { ...t, name } : t));
+        setEditingAdvanceType(null);
+      } else {
+        setAdvanceTypes([...advanceTypes, { id: Math.random().toString(), name }]);
+      }
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeleteAdvanceType = (id: string) => {
+    if (window.confirm("Xóa loại tạm ứng này?")) setAdvanceTypes(advanceTypes.filter(t => t.id !== id));
   };
 
   const handleDriverSubmit = () => {
@@ -674,62 +718,47 @@ export default function App() {
     </div>
   );
 
-  const renderAdvanceManagement = () => (
+  const renderApproveAdvance = () => (
     <div className="space-y-6 animate-fade-in">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="h-fit">
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <IconWallet className="w-5 h-5 text-[#2c4aa0]" /> Quản lý Tạm ứng
-              </h2>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                  {advanceTypes.map(at => (
-                      <div key={at.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm group">
-                          <span>{at.name}</span>
-                      </div>
-                  ))}
+      <Card className="border-[#2c4aa0] border-2">
+          <h2 className="text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2">
+              <IconPlus className="w-5 h-5" /> Tạo & Duyệt phiếu Tạm ứng
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                  <label className="text-xs font-semibold text-gray-600">Tài xế</label>
+                  <select className="w-full p-2 text-sm border rounded" value={adminAdvDriver} onChange={e => setAdminAdvDriver(e.target.value)}>
+                      <option value="">-- Chọn tài xế --</option>
+                      {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
+                  </select>
               </div>
-          </Card>
-
-          <Card className="md:col-span-2 border-[#2c4aa0] border-2">
-              <h2 className="text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2">
-                  <IconPlus className="w-5 h-5" /> Tạo & Duyệt phiếu Tạm ứng
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                      <label className="text-xs font-semibold text-gray-600">Tài xế</label>
-                      <select className="w-full p-2 text-sm border rounded" value={adminAdvDriver} onChange={e => setAdminAdvDriver(e.target.value)}>
-                          <option value="">-- Chọn tài xế --</option>
-                          {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
-                      </select>
-                  </div>
-                  <div>
-                      <label className="text-xs font-semibold text-gray-600">Ngày</label>
-                      <input type="date" className="w-full p-2 text-sm border rounded" value={adminAdvDate} onChange={e => setAdminAdvDate(e.target.value)} />
-                  </div>
-                  <div>
-                      <label className="text-xs font-semibold text-gray-600">Số tiền (VNĐ)</label>
-                      <input 
-                        type="number" 
-                        className="w-full p-2 text-sm border rounded" 
-                        value={adminAdvAmount} 
-                        onChange={e => setAdminAdvAmount(e.target.value)} 
-                      />
-                  </div>
-                  <div>
-                      <label className="text-xs font-semibold text-gray-600">Loại chi</label>
-                      <select className="w-full p-2 text-sm border rounded" value={adminAdvType} onChange={e => setAdminAdvType(e.target.value)}>
-                          <option value="">-- Chọn loại --</option>
-                          {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                  </div>
-                  <div className="sm:col-span-2">
-                      <label className="text-xs font-semibold text-gray-600">Ghi chú</label>
-                      <input type="text" className="w-full p-2 text-sm border rounded" value={adminAdvNote} onChange={e => setAdminAdvNote(e.target.value)} placeholder="Chi tiết..." />
-                  </div>
+              <div>
+                  <label className="text-xs font-semibold text-gray-600">Ngày</label>
+                  <input type="date" className="w-full p-2 text-sm border rounded" value={adminAdvDate} onChange={e => setAdminAdvDate(e.target.value)} />
               </div>
-              <Button className="w-full mt-4" onClick={handleAdminCreateAdvance}>Tạo & Duyệt</Button>
-          </Card>
-      </div>
+              <div>
+                  <label className="text-xs font-semibold text-gray-600">Số tiền (VNĐ)</label>
+                  <input 
+                    type="number" 
+                    className="w-full p-2 text-sm border rounded" 
+                    value={adminAdvAmount} 
+                    onChange={e => setAdminAdvAmount(e.target.value)} 
+                  />
+              </div>
+              <div>
+                  <label className="text-xs font-semibold text-gray-600">Loại chi</label>
+                  <select className="w-full p-2 text-sm border rounded" value={adminAdvType} onChange={e => setAdminAdvType(e.target.value)}>
+                      <option value="">-- Chọn loại --</option>
+                      {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+              </div>
+              <div className="sm:col-span-2">
+                  <label className="text-xs font-semibold text-gray-600">Ghi chú</label>
+                  <input type="text" className="w-full p-2 text-sm border rounded" value={adminAdvNote} onChange={e => setAdminAdvNote(e.target.value)} placeholder="Chi tiết..." />
+              </div>
+          </div>
+          <Button className="w-full mt-4" onClick={handleAdminCreateAdvance}>Tạo & Duyệt</Button>
+      </Card>
 
       <Card>
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -768,6 +797,60 @@ export default function App() {
               </table>
           </div>
       </Card>
+    </div>
+  );
+
+  const renderAdvanceSettings = () => (
+    <div className="space-y-6 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Card className="lg:col-span-1 border-l-4 border-[#2c4aa0]">
+                <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <IconPlus className="w-5 h-5 text-[#2c4aa0]" /> {editingAdvanceType ? 'Sửa loại chi phí' : 'Thêm loại chi phí'}
+                </h2>
+                <form onSubmit={handleSaveAdvanceType} className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên loại chi phí</label>
+                        <input name="name" placeholder="VD: Chi phí sửa xe" required defaultValue={editingAdvanceType?.name} className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-100" />
+                    </div>
+                    <div className="flex gap-2">
+                      {editingAdvanceType && <Button variant="ghost" onClick={() => setEditingAdvanceType(null)} className="flex-1">Hủy</Button>}
+                      <Button type="submit" className="flex-1">{editingAdvanceType ? 'Cập nhật' : 'Thêm mới'}</Button>
+                    </div>
+                </form>
+            </Card>
+
+            <Card className="lg:col-span-2">
+                <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <IconWallet className="w-6 h-6 text-[#2c4aa0]" /> Danh mục chi phí tạm ứng
+                </h2>
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 border-b">
+                            <tr>
+                                <th className="p-4">Tên loại chi phí</th>
+                                <th className="p-4 text-right">Tác vụ</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {advanceTypes.map(t => (
+                                <tr key={t.id} className="hover:bg-slate-50 group">
+                                    <td className="p-4 font-semibold text-slate-700">{t.name}</td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => setEditingAdvanceType(t)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"><IconEdit className="w-4 h-4"/></button>
+                                            <button onClick={() => handleDeleteAdvanceType(t.id)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-all"><IconTrash className="w-4 h-4"/></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {advanceTypes.length === 0 && (
+                                <tr><td colSpan={2} className="p-8 text-center text-slate-400 italic">Chưa có loại chi phí nào</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        </div>
     </div>
   );
 
@@ -912,10 +995,10 @@ export default function App() {
 
   const renderApproveFuel = () => (
     <div className="space-y-8 animate-fade-in">
-        <Card className="border border-blue-100 bg-white shadow-xl">
+        <Card className="border border-blue-100 bg-white shadow-xl overflow-hidden">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <div className="w-12 h-12 bg-[#2c4aa0] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
                   <IconPlus className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -925,7 +1008,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-1 mb-8">
                 <div className="space-y-2 group">
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 px-1">
                     <IconUser className="w-3.5 h-3.5" /> Tài xế & Nhân sự
@@ -961,49 +1044,88 @@ export default function App() {
                     value={adminNewStation} 
                     onChange={e => setAdminNewStation(e.target.value)}
                   >
-                    <option value="">Chọn đối tác cấp</option>
+                    <option value="">Chọn đối tác cung ứng</option>
                     {stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
+            </div>
 
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 px-1">
-                    <IconCurrency className="w-3.5 h-3.5" /> Định mức cấp
-                  </label>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setAdminNewFullTank(!adminNewFullTank)}
-                      className={`flex-1 p-3.5 rounded-2xl border transition-all text-xs font-black uppercase tracking-tight flex items-center justify-center gap-2 ${
-                        adminNewFullTank 
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' 
-                        : 'bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500'
-                      }`}
-                    >
-                      {adminNewFullTank && <IconCheck className="w-4 h-4" />}
-                      Đầy bình
-                    </button>
-                    {!adminNewFullTank && (
-                      <input 
-                        type="number" 
-                        step="0.1" 
-                        placeholder="Triệu VNĐ" 
-                        className="flex-1 p-3.5 text-sm border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-black text-blue-600 text-center" 
-                        value={adminNewAmount} 
-                        onChange={e => setAdminNewAmount(e.target.value)} 
-                      />
-                    )}
+            <div className="space-y-4 mb-8">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 px-1">
+                <IconCurrency className="w-3.5 h-3.5" /> Định mức cấp (Chọn phương thức)
+              </label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Option 1: Amount */}
+                <div 
+                  onClick={() => setIsAdminFullTank(false)}
+                  className={`relative p-5 rounded-3xl border-2 transition-all cursor-pointer group ${!isAdminFullTank ? 'border-[#2c4aa0] bg-blue-50/30' : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'}`}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!isAdminFullTank ? 'bg-[#2c4aa0] text-white' : 'bg-slate-200 text-slate-500'}`}>
+                        <IconCurrency className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-black text-slate-800">Cấp theo số tiền</span>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Nhập giá trị triệu VNĐ</p>
+                      </div>
+                    </div>
+                    {!isAdminFullTank && <IconCheckCircle className="w-6 h-6 text-[#2c4aa0]" />}
                   </div>
+                  
+                  {!isAdminFullTank && (
+                    <div className="animate-fade-in">
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          step="0.1" 
+                          placeholder="0.0" 
+                          className="w-full bg-white p-4 pr-12 text-2xl font-black text-[#2c4aa0] border border-blue-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all placeholder:text-blue-100" 
+                          value={adminNewAmount} 
+                          onChange={e => setAdminNewAmount(e.target.value)} 
+                          autoFocus
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-blue-300 text-sm">Triệu VNĐ</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Option 2: Full Tank */}
+                <div 
+                  onClick={() => setIsAdminFullTank(true)}
+                  className={`relative p-5 rounded-3xl border-2 transition-all cursor-pointer group ${isAdminFullTank ? 'border-[#2c4aa0] bg-blue-50/30' : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdminFullTank ? 'bg-[#2c4aa0] text-white' : 'bg-slate-200 text-slate-500'}`}>
+                        <IconGasPump className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-black text-slate-800">Cấp đầy bình</span>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Không giới hạn định mức</p>
+                      </div>
+                    </div>
+                    {isAdminFullTank && <IconCheckCircle className="w-6 h-6 text-[#2c4aa0]" />}
+                  </div>
+                  {isAdminFullTank && (
+                    <div className="mt-4 p-3 bg-white/60 rounded-xl border border-blue-100 animate-fade-in text-center">
+                      <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Hệ thống sẽ ghi nhận: ĐẦY BÌNH</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {adminNewDriver && (
-              <div className="mt-8 flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col md:flex-row gap-4 mb-10">
                 <div className={`flex-1 p-5 rounded-3xl border flex items-start gap-4 transition-all duration-500 ${
                   adminAutoVehicle 
                   ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900 shadow-sm' 
                   : 'bg-rose-50 border-rose-100 text-rose-900'
                 }`}>
-                  <div className={`p-2.5 rounded-2xl ${adminAutoVehicle ? 'bg-emerald-200/50' : 'bg-rose-200/50'}`}>
+                  <div className={`p-2.5 rounded-2xl ${adminAutoVehicle ? 'bg-emerald-200/50 text-emerald-700' : 'bg-rose-200/50 text-rose-700'}`}>
                     {adminAutoVehicle ? <IconTruck className="w-6 h-6" /> : <IconAlert className="w-6 h-6" />}
                   </div>
                   <div>
@@ -1018,8 +1140,8 @@ export default function App() {
                 </div>
 
                 <div className="flex-1 p-5 bg-slate-50 border border-slate-100 rounded-3xl flex items-start gap-4">
-                  <div className="p-2.5 bg-slate-200/50 rounded-2xl">
-                    <IconDocument className="w-6 h-6 text-slate-500" />
+                  <div className="p-2.5 bg-slate-200/50 rounded-2xl text-slate-500">
+                    <IconDocument className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Ghi chú nghiệp vụ</h4>
@@ -1034,7 +1156,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="mt-10 flex gap-4">
+            <div className="flex gap-4">
               <Button 
                 variant="ghost" 
                 className="px-8 py-4 text-xs uppercase font-black tracking-widest text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl"
@@ -1045,7 +1167,7 @@ export default function App() {
                 Làm mới biểu mẫu
               </Button>
               <Button 
-                className="flex-1 py-5 text-base font-black uppercase tracking-widest shadow-2xl shadow-blue-600/30 rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all scale-hover" 
+                className="flex-1 py-5 text-base font-black uppercase tracking-widest shadow-2xl shadow-blue-600/30 rounded-2xl bg-[#2c4aa0] hover:bg-blue-800 active:bg-blue-900 transition-all scale-hover" 
                 onClick={handleAdminCreateRequest}
               >
                 <IconCheckCircle className="w-6 h-6" /> Phê duyệt & Phát hành phiếu
@@ -1378,12 +1500,20 @@ export default function App() {
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button onClick={() => {
-                        if(u.username === 'admin') return alert('Không thể xóa admin mặc định');
-                        if(window.confirm('Xóa người dùng này?')) setUsers(users.filter(x=>x.id!==u.id));
-                      }} className="p-1 text-rose-400 hover:bg-rose-50 rounded">
-                        <IconTrash className="w-4 h-4" />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => {
+                          setUserToChangePassword(u);
+                          setIsPasswordModalOpen(true);
+                        }} className="p-1 text-[#2c4aa0] hover:bg-blue-50 rounded" title="Đổi mật khẩu">
+                          <IconKey className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => {
+                          if(u.username === 'admin') return alert('Không thể xóa admin mặc định');
+                          if(window.confirm('Xóa người dùng này?')) setUsers(users.filter(x=>x.id!==u.id));
+                        }} className="p-1 text-rose-400 hover:bg-rose-50 rounded">
+                          <IconTrash className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1408,9 +1538,9 @@ export default function App() {
               <IconGasPump className={`w-5 h-5 ${activeTab === 'APPROVE_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Duyệt cấp dầu</span>
             </button>
-            <button onClick={() => setActiveTab('ADVANCES')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'ADVANCES' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconWallet className={`w-5 h-5 ${activeTab === 'ADVANCES' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Tạm ứng</span>
+            <button onClick={() => setActiveTab('APPROVE_ADVANCE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+              <IconWallet className={`w-5 h-5 ${activeTab === 'APPROVE_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+              <span>Duyệt tạm ứng</span>
             </button>
             <button onClick={() => setActiveTab('SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconCurrency className={`w-5 h-5 ${activeTab === 'SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
@@ -1424,6 +1554,10 @@ export default function App() {
             <button onClick={() => setActiveTab('FUEL_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'FUEL_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconGasPump className={`w-5 h-5 ${activeTab === 'FUEL_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Nhiên liệu</span>
+            </button>
+            <button onClick={() => setActiveTab('ADVANCE_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'ADVANCE_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+              <IconWallet className={`w-5 h-5 ${activeTab === 'ADVANCE_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+              <span>Tạm ứng</span>
             </button>
             <button onClick={() => setActiveTab('USERS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'USERS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconUser className={`w-5 h-5 ${activeTab === 'USERS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
@@ -1439,9 +1573,10 @@ export default function App() {
       <div className="flex-1 space-y-8">
         {activeTab === 'DASHBOARD' && renderDashboard()}
         {activeTab === 'APPROVE_FUEL' && renderApproveFuel()}
+        {activeTab === 'APPROVE_ADVANCE' && renderApproveAdvance()}
         {activeTab === 'SALARY' && renderSalaryManagement()}
         {activeTab === 'OPERATION' && renderOperationManagement()}
-        {activeTab === 'ADVANCES' && renderAdvanceManagement()}
+        {activeTab === 'ADVANCE_SETTINGS' && renderAdvanceSettings()}
         {activeTab === 'FUEL_SETTINGS' && renderFuelSettings()}
         {activeTab === 'USERS' && renderUserManagement()}
         {activeTab === 'REPORTS' && renderReports()}
@@ -1634,6 +1769,19 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => { setUserToChangePassword(currentUser); setIsPasswordModalOpen(true); }}
+                className="p-2 text-slate-400 hover:text-[#2c4aa0] transition-colors" 
+                title="Đổi mật khẩu"
+              >
+                <IconKey className="w-5 h-5" />
+              </button>
+              <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-500 transition-colors" title="Đăng xuất">
+                <IconXCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="h-8 w-[1px] bg-slate-200 hidden sm:block mx-1"></div>
             <div className="flex items-center gap-3 pl-2 group">
               <div className="text-right hidden sm:block">
                 <div className="text-xs font-black text-slate-700">{currentUser.fullName}</div>
@@ -1645,10 +1793,6 @@ export default function App() {
                 <IconUser className="w-6 h-6 text-[#2c4aa0]" />
               </div>
             </div>
-            <div className="h-8 w-[1px] bg-slate-200 hidden sm:block mx-2"></div>
-            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-500 transition-colors" title="Đăng xuất">
-              <IconXCircle className="w-6 h-6" />
-            </button>
           </div>
         </div>
       </header>
@@ -1690,6 +1834,38 @@ export default function App() {
             <div className="flex gap-3 pt-4">
               <Button variant="ghost" className="flex-1" onClick={handleReject}>Từ chối</Button>
               <Button className="flex-[2] py-4" onClick={handleApprove}>Xác nhận cấp dầu</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Password Change Modal */}
+      {isPasswordModalOpen && userToChangePassword && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <Card className="max-w-md w-full p-8 space-y-6 shadow-2xl scale-in border-none">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+              <h3 className="text-xl font-black text-slate-800">Đổi mật khẩu</h3>
+              <button onClick={() => setIsPasswordModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-full transition-colors"><IconXCircle className="w-6 h-6 text-slate-300 hover:text-rose-500"/></button>
+            </div>
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tài khoản</div>
+                <div className="font-bold text-slate-700">{userToChangePassword.fullName} (@{userToChangePassword.username})</div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Mật khẩu mới</label>
+                <input 
+                  type="password"
+                  className="w-full p-3 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-semibold" 
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="ghost" className="flex-1" onClick={() => setIsPasswordModalOpen(false)}>Hủy</Button>
+              <Button className="flex-[2] py-4" onClick={handleUpdatePassword} disabled={!newPassword}>Cập nhật mật khẩu</Button>
             </div>
           </Card>
         </div>

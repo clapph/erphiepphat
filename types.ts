@@ -123,4 +123,4 @@ export interface User {
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'ADVANCES' | 'OPERATION' | 'REPORTS' | 'SALARY' | 'USERS' | 'FUEL_SETTINGS';
+export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'SALARY' | 'USERS' | 'FUEL_SETTINGS';
