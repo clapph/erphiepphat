@@ -84,6 +84,25 @@ export interface Vehicle {
   status: VehicleStatus;
 }
 
+export interface SalaryRecord {
+  id: string;
+  transportDate: string; // NGÀY VC
+  driverName: string; // TÀI XẾ
+  cargoType: string; // LOẠI HÀNG
+  pickupWarehouse: string; // KHO ĐÓNG NHẬP
+  deliveryWarehouse: string; // ĐỊA ĐIỂM ĐÓNG NHẬP
+  depotPickup: string; // DEPOT LẤY RỖNG/FULL
+  depotReturn: string; // HẠ CONT/TRẢ RỖNG
+  containerNo: string; // SỐ CONT/DO
+  qtyPalletTon: number; // SL PALLET/TẤN
+  qty20: number; // SL CONT20
+  qty40: number; // SL CONT40
+  outOfPocketLRHR: number; // CHI HỘ LR/HR
+  outOfPocketSC: number; // CHI HỘ CƯỢC SC
+  tripSalary: number; // LƯƠNG CHUYẾN
+  handlingFee: number; // TIỀN LÀM HÀNG
+}
+
 export interface User {
   id: string;
   username: string;
@@ -93,4 +112,4 @@ export interface User {
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'USERS' | 'FUEL_SETTINGS';
+export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'SALARY' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'USERS' | 'FUEL_SETTINGS';
