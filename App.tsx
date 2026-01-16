@@ -119,8 +119,6 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     deliveryWarehouse: 'Cảng Cát Lái',
     depotLocation: 'Depot 6',
     returnLocation: 'Hạ bãi',
-    outOfPocketLRHR: 150000,
-    outOfPocketSC: 0,
     salary: 800000,
     handlingFee: 100000,
     notes: 'Kẹt xe'
@@ -624,25 +622,23 @@ export default function App() {
     const newPreview: SalaryRecord[] = [];
     rows.forEach((row, index) => {
       const cols = row.split('\t');
-      if (cols.length < 5 || (index === 0 && (cols[0].includes("Ngày") || cols[0].includes("NGÀY")))) return;
+      if (cols.length < 5 || (index === 0 && cols[0].includes("Ngày"))) return;
       newPreview.push({
         id: Math.random().toString(36).substr(2, 9),
         transportDate: cols[0]?.trim() || new Date().toISOString().split('T')[0],
         driverName: cols[1]?.trim() || 'Unknown',
         cargoType: (cols[2]?.trim().toUpperCase() as CargoType) || 'CONT',
-        pickupWarehouse: cols[3]?.trim() || '',
-        deliveryWarehouse: cols[4]?.trim() || '',
-        depotLocation: cols[5]?.trim() || '',
-        returnLocation: cols[6]?.trim() || '',
-        refNumber: cols[7]?.trim() || '',
-        quantityOther: Number(cols[8]?.replace(/[^\d.]/g, '')) || 0,
-        quantity20: Number(cols[9]?.replace(/[^\d.]/g, '')) || 0,
-        quantity40: Number(cols[10]?.replace(/[^\d.]/g, '')) || 0,
-        outOfPocketLRHR: Number(cols[11]?.replace(/[^\d]/g, '')) || 0,
-        outOfPocketSC: Number(cols[12]?.replace(/[^\d]/g, '')) || 0,
-        salary: Number(cols[13]?.replace(/[^\d]/g, '')) || 0,
-        handlingFee: Number(cols[14]?.replace(/[^\d]/g, '')) || 0,
-        notes: cols[15]?.trim() || ''
+        refNumber: cols[3]?.trim() || '',
+        quantity20: Number(cols[4]?.replace(/[^\d.]/g, '')) || 0,
+        quantity40: Number(cols[5]?.replace(/[^\d.]/g, '')) || 0,
+        quantityOther: Number(cols[6]?.replace(/[^\d.]/g, '')) || 0,
+        pickupWarehouse: cols[7]?.trim() || '',
+        deliveryWarehouse: cols[8]?.trim() || '',
+        depotLocation: cols[9]?.trim() || '',
+        returnLocation: cols[10]?.trim() || '',
+        salary: Number(cols[11]?.replace(/[^\d]/g, '')) || 0,
+        handlingFee: Number(cols[12]?.replace(/[^\d]/g, '')) || 0,
+        notes: cols[13]?.trim() || ''
       });
     });
     if (newPreview.length > 0) setImportPreviewRecords(newPreview);
@@ -664,20 +660,8 @@ export default function App() {
       ...editingSalaryRecord,
       transportDate: formData.get('transportDate') as string,
       driverName: formData.get('driverName') as string,
-      cargoType: formData.get('cargoType') as CargoType,
-      pickupWarehouse: formData.get('pickupWarehouse') as string,
-      deliveryWarehouse: formData.get('deliveryWarehouse') as string,
-      depotLocation: formData.get('depotLocation') as string,
-      returnLocation: formData.get('returnLocation') as string,
-      refNumber: formData.get('refNumber') as string,
-      quantityOther: Number(formData.get('quantityOther')),
-      quantity20: Number(formData.get('quantity20')),
-      quantity40: Number(formData.get('quantity40')),
-      outOfPocketLRHR: Number(formData.get('outOfPocketLRHR')),
-      outOfPocketSC: Number(formData.get('outOfPocketSC')),
       salary: Number(formData.get('salary')),
       handlingFee: Number(formData.get('handlingFee')),
-      notes: formData.get('notes') as string,
     };
     setSalaryRecords(salaryRecords.map(s => s.id === updated.id ? updated : s));
     setEditingSalaryRecord(null);
@@ -913,51 +897,33 @@ export default function App() {
                 <Button variant="ghost" onClick={() => { setSalaryStartDate(''); setSalaryEndDate(''); setSalaryCargoFilter(''); setSelectedSalaryIds(new Set()); }} className="text-xs">Xóa lọc</Button>
             </div>
             <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-                <table className="w-full text-left text-[10px] text-gray-600 border-collapse">
-                    <thead className="bg-slate-50 text-gray-500 font-black uppercase border-b text-center align-middle">
+                <table className="w-full text-left text-[11px] text-gray-600 border-collapse">
+                    <thead className="bg-gray-50 text-gray-500 font-bold border-b">
                         <tr>
-                            <th className="p-3 border-r min-w-[50px]"><input type="checkbox" className="rounded border-gray-300 text-[#2c4aa0] focus:ring-[#2c4aa0]" checked={isAllFilteredSelected} onChange={toggleAllSalariesOnPage} /></th>
-                            <th className="p-3 border-r whitespace-nowrap">Ngày VC</th>
-                            <th className="p-3 border-r whitespace-nowrap">Tài xế</th>
-                            <th className="p-3 border-r whitespace-nowrap">Loại hàng</th>
-                            <th className="p-3 border-r whitespace-nowrap">Kho đóng / nhập</th>
-                            <th className="p-3 border-r whitespace-nowrap">Điểm kho đóng / nhập</th>
-                            <th className="p-3 border-r whitespace-nowrap">Depot lấy rỗng / full</th>
-                            <th className="p-3 border-r whitespace-nowrap">Hạ cont / trả rỗng</th>
-                            <th className="p-3 border-r whitespace-nowrap">Số cont / do</th>
-                            <th className="p-3 border-r whitespace-nowrap">SL Pallet / tấn</th>
-                            <th className="p-3 border-r whitespace-nowrap">Cont 20</th>
-                            <th className="p-3 border-r whitespace-nowrap">Cont 40</th>
-                            <th className="p-3 border-r whitespace-nowrap text-red-500">Chi hộ LR/HR</th>
-                            <th className="p-3 border-r whitespace-nowrap text-red-500">Chi hộ cược sc</th>
-                            <th className="p-3 border-r whitespace-nowrap text-blue-700">Lương chuyến</th>
-                            <th className="p-3 border-r whitespace-nowrap text-orange-600">Làm hàng</th>
-                            <th className="p-3 whitespace-nowrap">Tác vụ</th>
+                            <th className="p-3 text-center w-10"><input type="checkbox" className="rounded border-gray-300 text-[#2c4aa0] focus:ring-[#2c4aa0]" checked={isAllFilteredSelected} onChange={toggleAllSalariesOnPage} /></th>
+                            <th className="p-3 uppercase tracking-tighter">Ngày VC</th>
+                            <th className="p-3 uppercase tracking-tighter">Tài xế</th>
+                            <th className="p-3 uppercase tracking-tighter">Loại hàng</th>
+                            <th className="p-3 uppercase tracking-tighter">Số CONT / DO</th>
+                            <th className="p-3 text-right">Lương chuyến</th>
+                            <th className="p-3 text-right"> Làm hàng</th>
+                            <th className="p-3 text-center">Tác vụ</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50 text-center">
+                    <tbody className="divide-y divide-gray-50">
                         {filteredSalaries.map(s => (
                             <tr key={s.id} className={`group hover:bg-[#f8f9ff] transition-colors ${selectedSalaryIds.has(s.id) ? 'bg-blue-50' : ''}`}>
-                                <td className="p-2 border-r"><input type="checkbox" className="rounded border-gray-300 text-[#2c4aa0] focus:ring-[#2c4aa0]" checked={selectedSalaryIds.has(s.id)} onChange={() => { const next = new Set(selectedSalaryIds); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setSelectedSalaryIds(next); }} /></td>
-                                <td className="p-2 border-r whitespace-nowrap text-gray-500 font-medium">{formatDate(s.transportDate)}</td>
-                                <td className="p-2 border-r font-bold text-gray-700">{s.driverName}</td>
-                                <td className="p-2 border-r uppercase font-bold text-slate-500">{s.cargoType}</td>
-                                <td className="p-2 border-r text-xs">{s.pickupWarehouse}</td>
-                                <td className="p-2 border-r text-xs">{s.deliveryWarehouse}</td>
-                                <td className="p-2 border-r text-xs">{s.depotLocation || '-'}</td>
-                                <td className="p-2 border-r text-xs">{s.returnLocation || '-'}</td>
-                                <td className="p-2 border-r font-mono font-bold text-blue-600 uppercase">{s.refNumber}</td>
-                                <td className="p-2 border-r font-bold">{s.quantityOther > 0 ? s.quantityOther : '-'}</td>
-                                <td className="p-2 border-r font-bold">{s.quantity20 > 0 ? s.quantity20 : '-'}</td>
-                                <td className="p-2 border-r font-bold">{s.quantity40 > 0 ? s.quantity40 : '-'}</td>
-                                <td className="p-2 border-r text-red-500 font-bold">{s.outOfPocketLRHR > 0 ? formatCurrency(s.outOfPocketLRHR) : '-'}</td>
-                                <td className="p-2 border-r text-red-500 font-bold">{s.outOfPocketSC > 0 ? formatCurrency(s.outOfPocketSC) : '-'}</td>
-                                <td className="p-2 border-r font-black text-[#2c4aa0]">{formatCurrency(s.salary)}</td>
-                                <td className="p-2 border-r font-black text-orange-600">{formatCurrency(s.handlingFee)}</td>
-                                <td className="p-2">
+                                <td className="p-3 text-center"><input type="checkbox" className="rounded border-gray-300 text-[#2c4aa0] focus:ring-[#2c4aa0]" checked={selectedSalaryIds.has(s.id)} onChange={() => { const next = new Set(selectedSalaryIds); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setSelectedSalaryIds(next); }} /></td>
+                                <td className="p-3 whitespace-nowrap font-medium text-gray-400">{formatDate(s.transportDate)}</td>
+                                <td className="p-3 font-semibold text-gray-800">{s.driverName}</td>
+                                <td className="p-3 text-center"><span className="px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-500">{s.cargoType}</span></td>
+                                <td className="p-3 font-mono font-medium text-blue-600">{s.refNumber}</td>
+                                <td className="p-3 text-right font-bold text-[#2c4aa0]">{formatCurrency(s.salary)}</td>
+                                <td className="p-3 text-right font-bold text-orange-600">{formatCurrency(s.handlingFee)}</td>
+                                <td className="p-3 text-center">
                                   <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => setEditingSalaryRecord(s)} className="p-1 text-blue-500 hover:bg-blue-100 rounded transition-colors"><IconEdit className="w-3.5 h-3.5"/></button>
-                                    <button onClick={() => { if(window.confirm("Xóa dòng lương này?")) setSalaryRecords(salaryRecords.filter(x => x.id !== s.id)); }} className="p-1 text-red-400 hover:bg-red-100 rounded transition-colors"><IconTrash className="w-3.5 h-3.5"/></button>
+                                    <button onClick={() => setEditingSalaryRecord(s)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-lg transition-colors"><IconEdit className="w-4 h-4"/></button>
+                                    <button onClick={() => { if(window.confirm("Xóa dòng lương này?")) setSalaryRecords(salaryRecords.filter(x => x.id !== s.id)); }} className="p-1.5 text-red-400 hover:bg-red-100 rounded-lg transition-colors"><IconTrash className="w-4 h-4"/></button>
                                   </div>
                                 </td>
                             </tr>
@@ -1815,15 +1781,9 @@ export default function App() {
         if (!acc[curr.cargoType]) {
           acc[curr.cargoType] = { trips: new Set(), amount: 0 };
         }
+        // If we want trips per cargo type, we need to consider days
         acc[curr.cargoType].trips.add(`${curr.transportDate}_${curr.driverName}`); 
         acc[curr.cargoType].amount += (curr.salary + curr.handlingFee);
-        return acc;
-    }, {});
-
-    // Grouping for visual detail table: Group by Date
-    const detailGroupedByDate = fSalaries.reduce((acc: any, curr) => {
-        if (!acc[curr.transportDate]) acc[curr.transportDate] = [];
-        acc[curr.transportDate].push(curr);
         return acc;
     }, {});
 
@@ -1917,60 +1877,37 @@ export default function App() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">Bảng kê chi tiết chuyến</h3>
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Bảng kê chi tiết chuyến</h3>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Quy tắc: 1 Ngày + 1 Loại hàng = 1 Chuyến</span>
+                </div>
                 <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
                   <table className="w-full text-left text-[11px]">
-                    <thead className="bg-slate-100 text-slate-500 font-black uppercase border-b border-slate-200">
+                    <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
                       <tr>
-                        <th className="p-4">Thông tin chuyến</th>
+                        <th className="p-4">Ngày VC</th>
+                        <th className="p-4">Tài xế</th>
+                        <th className="p-4">Loại hàng</th>
                         <th className="p-4">Số CONT / DO</th>
-                        <th className="p-4 text-right">Lương cơ bản</th>
-                        <th className="p-4 text-right">Làm hàng</th>
-                        <th className="p-4 text-right bg-slate-50">Tổng thanh toán</th>
+                        <th className="p-4 text-right">Lương</th>
+                        <th className="p-4 text-right">Phí</th>
+                        <th className="p-4 text-right">Tổng</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {Object.keys(detailGroupedByDate).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(date => (
-                        <React.Fragment key={date}>
-                          {/* Date Group Header Row */}
-                          <tr className="bg-slate-50/50">
-                            <td colSpan={5} className="p-3 border-y border-slate-100">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-8 h-8 rounded-lg bg-[#2c4aa0]/10 flex items-center justify-center text-[#2c4aa0]">
-                                    <IconCalendar className="w-4 h-4"/>
-                                  </div>
-                                  <span className="font-black text-[#2c4aa0] uppercase tracking-wider">{formatDate(date)}</span>
-                                  <span className="text-slate-400 text-[9px] font-bold">({detailGroupedByDate[date].length} bản ghi)</span>
-                                </div>
-                            </td>
-                          </tr>
-                          {/* Group content */}
-                          {detailGroupedByDate[date].map((s: SalaryRecord) => (
-                            <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
-                              <td className="p-4">
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-slate-700">{s.driverName}</span>
-                                  <span className="text-[10px] text-slate-400 font-bold uppercase">{s.cargoType}</span>
-                                </div>
-                              </td>
-                              <td className="p-4 font-mono font-bold text-blue-600 group-hover:underline cursor-default uppercase">
-                                {s.refNumber}
-                              </td>
-                              <td className="p-4 text-right font-medium text-slate-500">
-                                {formatCurrency(s.salary)}
-                              </td>
-                              <td className="p-4 text-right font-medium text-orange-500">
-                                {formatCurrency(s.handlingFee)}
-                              </td>
-                              <td className="p-4 text-right bg-slate-50 group-hover:bg-blue-50/80">
-                                <div className="font-black text-[#2c4aa0] text-sm">{formatCurrency(s.salary + s.handlingFee)}</div>
-                              </td>
-                            </tr>
-                          ))}
-                        </React.Fragment>
+                      {fSalaries.map(s => (
+                        <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-4 font-medium text-slate-500">{formatDate(s.transportDate)}</td>
+                          <td className="p-4 font-black text-slate-700">{s.driverName}</td>
+                          <td className="p-4"><span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold">{s.cargoType}</span></td>
+                          <td className="p-4 font-mono font-bold text-blue-600">{s.refNumber}</td>
+                          <td className="p-4 text-right font-bold text-slate-500">{formatCurrency(s.salary)}</td>
+                          <td className="p-4 text-right font-bold text-orange-500">{formatCurrency(s.handlingFee)}</td>
+                          <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(s.salary + s.handlingFee)}</td>
+                        </tr>
                       ))}
                       {fSalaries.length === 0 && (
-                        <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">Không có dữ liệu phù hợp với bộ lọc</td></tr>
+                        <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic">Không có dữ liệu phù hợp với bộ lọc</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -2424,7 +2361,7 @@ export default function App() {
               >
                 <IconKey className="w-5 h-5" />
               </button>
-              <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-50 transition-colors" title="Đăng xuất">
+              <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-500 transition-colors" title="Đăng xuất">
                 <IconXCircle className="w-6 h-6" />
               </button>
             </div>
@@ -2500,7 +2437,7 @@ export default function App() {
                 <div className="font-bold text-slate-700">{userToChangePassword.fullName} (@{userToChangePassword.username})</div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Mật khẩu mới</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Mật khẩu mới</label>
                 <input 
                   type="password"
                   className="w-full p-3 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-semibold" 
@@ -2573,95 +2510,31 @@ export default function App() {
 
       {editingSalaryRecord && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-auto border-none shadow-2xl scale-in">
+            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-auto border-none shadow-2xl scale-in">
               <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
                   <h3 className="text-2xl font-black text-slate-800 tracking-tight">Chi tiết chuyến vận chuyển</h3>
                   <button onClick={() => setEditingSalaryRecord(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><IconXCircle className="w-8 h-8 text-slate-300 hover:text-rose-500" /></button>
               </div>
-              <form onSubmit={handleSaveSalaryRecord} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Ngày VC</label>
-                    <input name="transportDate" type="date" required defaultValue={editingSalaryRecord.transportDate} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Loại hàng</label>
-                    <select name="cargoType" required defaultValue={editingSalaryRecord.cargoType} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100 bg-white">
-                      <option value="CONT">Container</option>
-                      <option value="PALLET">Pallet</option>
-                      <option value="TRANSFER">Trung chuyển</option>
-                      <option value="GLASS">Kính</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Tài xế</label>
-                    <input name="driverName" required defaultValue={editingSalaryRecord.driverName} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Kho Đóng / Nhập</label>
-                    <input name="pickupWarehouse" defaultValue={editingSalaryRecord.pickupWarehouse} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Điểm Kho Đóng / Nhập</label>
-                    <input name="deliveryWarehouse" defaultValue={editingSalaryRecord.deliveryWarehouse} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Depot Lấy Rỗng / Full</label>
-                    <input name="depotLocation" defaultValue={editingSalaryRecord.depotLocation} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Hạ Cont / Trả Rỗng</label>
-                    <input name="returnLocation" defaultValue={editingSalaryRecord.returnLocation} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Số CONT / DO</label>
-                    <input name="refNumber" required defaultValue={editingSalaryRecord.refNumber} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none uppercase font-bold text-blue-600" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Pallet / Tấn</label>
-                    <input name="quantityOther" type="number" defaultValue={editingSalaryRecord.quantityOther} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">CONT 20</label>
-                    <input name="quantity20" type="number" defaultValue={editingSalaryRecord.quantity20} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">CONT 40</label>
-                    <input name="quantity40" type="number" defaultValue={editingSalaryRecord.quantity40} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Chi hộ LR/HR</label>
-                    <input name="outOfPocketLRHR" type="number" defaultValue={editingSalaryRecord.outOfPocketLRHR} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none text-red-500 font-bold" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Chi hộ Cược SC</label>
-                    <input name="outOfPocketSC" type="number" defaultValue={editingSalaryRecord.outOfPocketSC} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none text-red-500 font-bold" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Lương chuyến</label>
-                    <input name="salary" type="number" required defaultValue={editingSalaryRecord.salary} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none font-black text-[#2c4aa0]" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Làm hàng</label>
-                    <input name="handlingFee" type="number" defaultValue={editingSalaryRecord.handlingFee} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none font-black text-orange-600" />
-                  </div>
-                </div>
-
+              <form onSubmit={handleSaveSalaryRecord} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Ghi chú</label>
-                  <input name="notes" defaultValue={editingSalaryRecord.notes} className="w-full p-2.5 border border-gray-200 rounded-xl text-sm outline-none" placeholder="..." />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Ngày vận chuyển</label>
+                  <input name="transportDate" type="date" required defaultValue={editingSalaryRecord.transportDate} className="w-full p-3 border border-gray-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
                 </div>
-
-                <div className="flex gap-4 pt-6">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Họ tên Tài xế</label>
+                  <input name="driverName" required defaultValue={editingSalaryRecord.driverName} className="w-full p-3 border border-gray-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
+                </div>
+                <div className="md:col-span-2 grid grid-cols-2 gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Mức lương cơ bản</label>
+                    <input name="salary" type="number" required defaultValue={editingSalaryRecord.salary} className="w-full p-3 border border-gray-200 rounded-2xl text-sm font-black text-[#2c4aa0] focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Chi phí làm hàng</label>
+                    <input name="handlingFee" type="number" defaultValue={editingSalaryRecord.handlingFee} className="w-full p-3 border border-gray-200 rounded-2xl text-sm font-black text-orange-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex gap-4 pt-6">
                   <Button variant="ghost" className="flex-1" onClick={() => setEditingSalaryRecord(null)}>Hủy bỏ</Button>
                   <Button type="submit" className="flex-[2] py-4 shadow-lg shadow-blue-200">Cập nhật thông tin</Button>
                 </div>
