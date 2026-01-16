@@ -200,8 +200,8 @@ const Button = ({ children, onClick, variant = 'primary', className = '', disabl
   );
 };
 
-const Card = ({ children, className = '' }: any) => (
-  <div className={`bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-white/40 p-6 ${className}`}>
+const Card = ({ children, className = '', onClick }: any) => (
+  <div onClick={onClick} className={`bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-white/40 p-6 ${className}`}>
     {children}
   </div>
 );
@@ -288,6 +288,7 @@ export default function App() {
   const [salaryStartDate, setSalaryStartDate] = useState('');
   const [salaryEndDate, setSalaryEndDate] = useState('');
   const [salaryCargoFilter, setSalaryCargoFilter] = useState('');
+  const [salaryDriverFilter, setSalaryDriverFilter] = useState('');
   const [selectedSalaryIds, setSelectedSalaryIds] = useState<Set<string>>(new Set());
 
   const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'SALARY' | 'REPORTS'>('FUEL');
@@ -333,9 +334,10 @@ export default function App() {
       const dateMatch = (!salaryStartDate || s.transportDate >= salaryStartDate) && 
                          (!salaryEndDate || s.transportDate <= salaryEndDate);
       const cargoMatch = !salaryCargoFilter || s.cargoType === salaryCargoFilter;
-      return dateMatch && cargoMatch;
+      const driverMatch = !salaryDriverFilter || s.driverName === salaryDriverFilter;
+      return dateMatch && cargoMatch && driverMatch;
     }).sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime());
-  }, [salaryRecords, salaryStartDate, salaryEndDate, salaryCargoFilter]);
+  }, [salaryRecords, salaryStartDate, salaryEndDate, salaryCargoFilter, salaryDriverFilter]);
 
   const isAllFilteredSelected = useMemo(() => {
     return filteredSalaries.length > 0 && filteredSalaries.every(s => selectedSalaryIds.has(s.id));
@@ -711,19 +713,19 @@ export default function App() {
   const renderDashboard = () => (
     <div className="space-y-8 animate-fade-in">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="relative overflow-hidden group">
+          <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_FUEL')}>
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-amber-500/20 transition-all duration-500"></div>
             <div className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-1">Cần xử lý</div>
             <div className="text-sm font-medium text-gray-400 mb-2">Dầu chờ duyệt</div>
             <div className="text-4xl font-black text-gray-800">{requests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">phiếu</span></div>
           </Card>
-          <Card className="relative overflow-hidden group">
+          <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_ADVANCE')}>
             <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-orange-500/20 transition-all duration-500"></div>
             <div className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">Tài chính</div>
             <div className="text-sm font-medium text-gray-400 mb-2">Tạm ứng chờ duyệt</div>
             <div className="text-4xl font-black text-gray-800">{advanceRequests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">yêu cầu</span></div>
           </Card>
-          <Card className="relative overflow-hidden group border-l-4 border-emerald-500">
+          <Card className="relative overflow-hidden group border-l-4 border-emerald-500 cursor-pointer hover:border-emerald-200 transition-all" onClick={() => setActiveTab('OPERATION')}>
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-emerald-500/20 transition-all duration-500"></div>
             <div className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Hiệu suất</div>
             <div className="text-sm font-medium text-gray-400 mb-2">Xe đang vận hành</div>
@@ -1713,7 +1715,7 @@ export default function App() {
                   </div>
                   <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
                     <div className="text-[11px] font-black uppercase text-amber-600 mb-1 tracking-widest">Dư nợ (Chưa hoàn ứng)</div>
-                    <div className="text-3xl font-black text-amber-700">{formatCurrency(totalUnsettled)}</div>
+                    <div className="text-3xl font-black text-emerald-700">{formatCurrency(totalUnsettled)}</div>
                   </div>
               </div>
 
@@ -1742,6 +1744,170 @@ export default function App() {
                       ))}
                       {Object.keys(advanceByDriver).length === 0 && (
                         <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">Không có dữ liệu tạm ứng trong kỳ</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+          </Card>
+      </div>
+    );
+  };
+
+  const renderSalaryReports = () => {
+    const fSalaries = salaryRecords.filter(s => {
+        const dateMatch = (!reportStartDate || s.transportDate >= reportStartDate) && 
+                          (!reportEndDate || s.transportDate <= reportEndDate);
+        const cargoMatch = !salaryCargoFilter || s.cargoType === salaryCargoFilter;
+        const driverMatch = !salaryDriverFilter || s.driverName === salaryDriverFilter;
+        return dateMatch && cargoMatch && driverMatch;
+    });
+
+    const totalBaseSalary = fSalaries.reduce((s, r) => s + r.salary, 0);
+    const totalHandlingFee = fSalaries.reduce((s, r) => s + r.handlingFee, 0);
+    const totalGross = totalBaseSalary + totalHandlingFee;
+
+    // "Số chuyến" logic: 1 day with 1 cargo type = 1 trip
+    const salaryByDriver = fSalaries.reduce((acc: any, curr) => {
+        if (!acc[curr.driverName]) {
+          acc[curr.driverName] = { trips: new Set(), amount: 0 };
+        }
+        acc[curr.driverName].trips.add(`${curr.transportDate}_${curr.cargoType}`);
+        acc[curr.driverName].amount += (curr.salary + curr.handlingFee);
+        return acc;
+    }, {});
+
+    const salaryByCargo = fSalaries.reduce((acc: any, curr) => {
+        if (!acc[curr.cargoType]) {
+          acc[curr.cargoType] = { trips: new Set(), amount: 0 };
+        }
+        // If we want trips per cargo type, we need to consider days
+        acc[curr.cargoType].trips.add(`${curr.transportDate}_${curr.driverName}`); 
+        acc[curr.cargoType].amount += (curr.salary + curr.handlingFee);
+        return acc;
+    }, {});
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+          <Card className="border-t-4 border-emerald-500">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconCurrency className="w-6 h-6 text-emerald-500"/> Báo cáo Lương chuyến chi tiết</h2>
+              
+              <div className="bg-slate-50 p-5 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 border border-slate-100">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Từ ngày</label>
+                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Đến ngày</label>
+                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Lọc theo tài xế</label>
+                  <select className="w-full p-2 text-sm border rounded-xl" value={salaryDriverFilter} onChange={e => setSalaryDriverFilter(e.target.value)}>
+                    <option value="">Tất cả tài xế</option>
+                    {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Lọc loại hàng</label>
+                  <select className="w-full p-2 text-sm border rounded-xl" value={salaryCargoFilter} onChange={e => setSalaryCargoFilter(e.target.value)}>
+                    <option value="">Tất cả loại hàng</option>
+                    <option value="CONT">Container</option>
+                    <option value="PALLET">Pallet</option>
+                    <option value="TRANSFER">Trung chuyển</option>
+                    <option value="GLASS">Kính</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-emerald-600 p-6 rounded-3xl text-white shadow-xl shadow-emerald-100">
+                    <div className="text-[11px] font-black uppercase opacity-80 mb-1 tracking-widest">Tổng lương hạch toán</div>
+                    <div className="text-3xl font-black">{formatCurrency(totalGross)}</div>
+                  </div>
+                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="text-[11px] font-black uppercase text-slate-400 mb-1 tracking-widest">Lương cơ bản</div>
+                    <div className="text-2xl font-black text-slate-800">{formatCurrency(totalBaseSalary)}</div>
+                  </div>
+                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="text-[11px] font-black uppercase text-slate-400 mb-1 tracking-widest">Làm hàng / Khác</div>
+                    <div className="text-2xl font-black text-slate-800">{formatCurrency(totalHandlingFee)}</div>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest">Theo loại hàng</h3>
+                  <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
+                        <tr><th className="p-4">Loại hàng</th><th className="p-4 text-center">Số chuyến</th><th className="p-4 text-right">Thành tiền</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {Object.entries(salaryByCargo).map(([cargo, data]: any) => (
+                          <tr key={cargo} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-4 font-black text-slate-700">{cargo}</td>
+                            <td className="p-4 text-center font-bold text-slate-400">{data.trips.size}</td>
+                            <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(data.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest">Theo tài xế</h3>
+                  <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
+                        <tr><th className="p-4">Tài xế</th><th className="p-4 text-center">Số chuyến</th><th className="p-4 text-right">Thành tiền</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {Object.entries(salaryByDriver).map(([driver, data]: any) => (
+                          <tr key={driver} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-4 font-black text-slate-700">{driver}</td>
+                            <td className="p-4 text-center font-bold text-slate-400">{data.trips.size}</td>
+                            <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(data.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Bảng kê chi tiết chuyến</h3>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Quy tắc: 1 Ngày + 1 Loại hàng = 1 Chuyến</span>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
+                      <tr>
+                        <th className="p-4">Ngày VC</th>
+                        <th className="p-4">Tài xế</th>
+                        <th className="p-4">Loại hàng</th>
+                        <th className="p-4">Số CONT / DO</th>
+                        <th className="p-4 text-right">Lương</th>
+                        <th className="p-4 text-right">Phí</th>
+                        <th className="p-4 text-right">Tổng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {fSalaries.map(s => (
+                        <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-4 font-medium text-slate-500">{formatDate(s.transportDate)}</td>
+                          <td className="p-4 font-black text-slate-700">{s.driverName}</td>
+                          <td className="p-4"><span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold">{s.cargoType}</span></td>
+                          <td className="p-4 font-mono font-bold text-blue-600">{s.refNumber}</td>
+                          <td className="p-4 text-right font-bold text-slate-500">{formatCurrency(s.salary)}</td>
+                          <td className="p-4 text-right font-bold text-orange-500">{formatCurrency(s.handlingFee)}</td>
+                          <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(s.salary + s.handlingFee)}</td>
+                        </tr>
+                      ))}
+                      {fSalaries.length === 0 && (
+                        <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic">Không có dữ liệu phù hợp với bộ lọc</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -1880,6 +2046,10 @@ export default function App() {
               <IconWallet className={`w-5 h-5 ${activeTab === 'REPORTS_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Báo cáo tạm ứng</span>
             </button>
+            <button onClick={() => setActiveTab('REPORTS_SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+              <IconCurrency className={`w-5 h-5 ${activeTab === 'REPORTS_SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+              <span>Báo cáo lương</span>
+            </button>
 
             <h3 className="px-3 py-2 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">Hệ thống</h3>
             <button onClick={() => setActiveTab('OPERATION')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'OPERATION' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
@@ -1913,6 +2083,7 @@ export default function App() {
         {activeTab === 'REPORTS' && renderReports()}
         {activeTab === 'REPORTS_FUEL' && renderFuelReports()}
         {activeTab === 'REPORTS_ADVANCE' && renderAdvanceReports()}
+        {activeTab === 'REPORTS_SALARY' && renderSalaryReports()}
       </div>
     </div>
   );
@@ -2061,7 +2232,7 @@ export default function App() {
                  </div>
                  <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">Mục đích tạm ứng</label>
-                    <select className="w-full p-3 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-amber-100 transition-all font-bold" value={adminAdvType} onChange={e => setAdminAdvType(e.target.value)}>
+                    <select className="w-full p-3 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-amber-100 transition-all font-bold" value={adminAdvAmount} onChange={e => setAdminAdvType(e.target.value)}>
                       <option value="">-- Chọn lý do --</option>
                       {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
