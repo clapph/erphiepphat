@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FuelRequest, 
@@ -13,8 +12,6 @@ import {
   VehicleType,
   AdvanceType,
   AdvanceRequest,
-  SalaryRecord,
-  CargoType,
   VehicleStatus,
   User
 } from './types';
@@ -105,26 +102,6 @@ const MOCK_ADVANCE_REQUESTS: AdvanceRequest[] = [
     { id: 'ar2', driverName: 'Trần Văn B', requestDate: '2023-10-20', amount: 200000, typeId: 'at3', status: RequestStatus.APPROVED, approvalDate: '2023-10-20', isSettled: true, settlementDate: '2023-10-25' },
 ];
 
-const MOCK_SALARY_RECORDS: SalaryRecord[] = [
-  {
-    id: 's1',
-    transportDate: '2023-10-20',
-    driverName: 'Nguyễn Văn A',
-    cargoType: 'CONT',
-    refNumber: 'TCLU1234567',
-    quantity20: 1,
-    quantity40: 0,
-    quantityOther: 0,
-    pickupWarehouse: 'ICD Phước Long',
-    deliveryWarehouse: 'Cảng Cát Lái',
-    depotLocation: 'Depot 6',
-    returnLocation: 'Hạ bãi',
-    salary: 800000,
-    handlingFee: 100000,
-    notes: 'Kẹt xe'
-  }
-];
-
 const MOCK_USERS: User[] = [
   { id: 'u1', username: 'admin', password: '123', fullName: 'Quản trị viên HP', role: 'ADMIN' },
   { id: 'u2', username: 'driverA', password: '123', fullName: 'Nguyễn Văn A', role: 'DRIVER' },
@@ -156,7 +133,7 @@ const getPriceForTime = (targetTimeStr: string, prices: FuelPrice[]): number | n
   const sortedPrices = [...prices].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const targetTimestamp = new Date(targetTimeStr).getTime();
   const applicablePrice = sortedPrices.find(p => new Date(p.date).getTime() <= targetTimestamp);
-  return applicablePrice ? applicablePrice.pricePerLiter : sortedPrices[sortedPrices.length - 1].pricePerLiter;
+  return applicablePrice ? applicablePrice.pricePerLiter : sortedPrices[0].pricePerLiter;
 };
 
 const checkInspectionExpiry = (expiryDateStr: string): boolean => {
@@ -255,14 +232,12 @@ export default function App() {
   const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>(MOCK_VEHICLE_TYPES);
   const [advanceTypes, setAdvanceTypes] = useState<AdvanceType[]>(MOCK_ADVANCE_TYPES);
   const [advanceRequests, setAdvanceRequests] = useState<AdvanceRequest[]>(MOCK_ADVANCE_REQUESTS);
-  const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>(MOCK_SALARY_RECORDS);
   
   // UI State
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [editingFuelPrice, setEditingFuelPrice] = useState<FuelPrice | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<DriverAssignment | null>(null);
-  const [editingSalaryRecord, setEditingSalaryRecord] = useState<SalaryRecord | null>(null);
   const [editingStation, setEditingStation] = useState<GasStation | null>(null);
   const [editingAdvanceType, setEditingAdvanceType] = useState<AdvanceType | null>(null);
 
@@ -270,9 +245,6 @@ export default function App() {
   const [selectedRequest, setSelectedRequest] = useState<FuelRequest | null>(null);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importPreviewRecords, setImportPreviewRecords] = useState<SalaryRecord[]>([]);
   
   const [adminAmount, setAdminAmount] = useState<string>('');
   const [adminStation, setAdminStation] = useState<string>('');
@@ -285,13 +257,7 @@ export default function App() {
   const [adminNewNote, setAdminNewNote] = useState('');
   const [adminNewFullTank, setAdminNewFullTank] = useState(false);
 
-  const [salaryStartDate, setSalaryStartDate] = useState('');
-  const [salaryEndDate, setSalaryEndDate] = useState('');
-  const [salaryCargoFilter, setSalaryCargoFilter] = useState('');
-  const [salaryDriverFilter, setSalaryDriverFilter] = useState('');
-  const [selectedSalaryIds, setSelectedSalaryIds] = useState<Set<string>>(new Set());
-
-  const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'SALARY' | 'REPORTS'>('FUEL');
+  const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'REPORTS'>('FUEL');
 
   const [newRequestDate, setNewRequestDate] = useState(new Date().toISOString().split('T')[0]);
   const [newRequestNote, setNewRequestNote] = useState('');
@@ -328,20 +294,6 @@ export default function App() {
     if (!adminNewDriver) return null;
     return getAssignedVehicle(adminNewDriver, adminNewDate, assignments);
   }, [adminNewDriver, adminNewDate, assignments]);
-
-  const filteredSalaries = useMemo(() => {
-    return salaryRecords.filter(s => {
-      const dateMatch = (!salaryStartDate || s.transportDate >= salaryStartDate) && 
-                         (!salaryEndDate || s.transportDate <= salaryEndDate);
-      const cargoMatch = !salaryCargoFilter || s.cargoType === salaryCargoFilter;
-      const driverMatch = !salaryDriverFilter || s.driverName === salaryDriverFilter;
-      return dateMatch && cargoMatch && driverMatch;
-    }).sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime());
-  }, [salaryRecords, salaryStartDate, salaryEndDate, salaryCargoFilter, salaryDriverFilter]);
-
-  const isAllFilteredSelected = useMemo(() => {
-    return filteredSalaries.length > 0 && filteredSalaries.every(s => selectedSalaryIds.has(s.id));
-  }, [filteredSalaries, selectedSalaryIds]);
 
   // --- Auth Handlers ---
   const handleLogin = (e: React.FormEvent) => {
@@ -616,76 +568,6 @@ export default function App() {
     setShowCopyModal(false);
   };
 
-  const handleParseImport = () => {
-    if (!importText.trim()) return;
-    const rows = importText.trim().split('\n');
-    const newPreview: SalaryRecord[] = [];
-    rows.forEach((row, index) => {
-      const cols = row.split('\t');
-      if (cols.length < 5 || (index === 0 && cols[0].includes("Ngày"))) return;
-      newPreview.push({
-        id: Math.random().toString(36).substr(2, 9),
-        transportDate: cols[0]?.trim() || new Date().toISOString().split('T')[0],
-        driverName: cols[1]?.trim() || 'Unknown',
-        cargoType: (cols[2]?.trim().toUpperCase() as CargoType) || 'CONT',
-        refNumber: cols[3]?.trim() || '',
-        quantity20: Number(cols[4]?.replace(/[^\d.]/g, '')) || 0,
-        quantity40: Number(cols[5]?.replace(/[^\d.]/g, '')) || 0,
-        quantityOther: Number(cols[6]?.replace(/[^\d.]/g, '')) || 0,
-        pickupWarehouse: cols[7]?.trim() || '',
-        deliveryWarehouse: cols[8]?.trim() || '',
-        depotLocation: cols[9]?.trim() || '',
-        returnLocation: cols[10]?.trim() || '',
-        salary: Number(cols[11]?.replace(/[^\d]/g, '')) || 0,
-        handlingFee: Number(cols[12]?.replace(/[^\d]/g, '')) || 0,
-        notes: cols[13]?.trim() || ''
-      });
-    });
-    if (newPreview.length > 0) setImportPreviewRecords(newPreview);
-    else alert("Định dạng dữ liệu không hợp lệ.");
-  };
-
-  const handleConfirmImport = () => {
-    setSalaryRecords([...importPreviewRecords, ...salaryRecords]);
-    setImportPreviewRecords([]);
-    setImportText('');
-    setShowImportModal(false);
-  };
-
-  const handleSaveSalaryRecord = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSalaryRecord) return;
-    const formData = new FormData(e.target as HTMLFormElement);
-    const updated: SalaryRecord = {
-      ...editingSalaryRecord,
-      transportDate: formData.get('transportDate') as string,
-      driverName: formData.get('driverName') as string,
-      salary: Number(formData.get('salary')),
-      handlingFee: Number(formData.get('handlingFee')),
-    };
-    setSalaryRecords(salaryRecords.map(s => s.id === updated.id ? updated : s));
-    setEditingSalaryRecord(null);
-  };
-
-  const handleBulkDeleteSalaries = () => {
-    if (window.confirm(`Xóa ${selectedSalaryIds.size} dòng đã chọn?`)) {
-      setSalaryRecords(salaryRecords.filter(s => !selectedSalaryIds.has(s.id)));
-      setSelectedSalaryIds(new Set());
-    }
-  };
-
-  const toggleAllSalariesOnPage = () => {
-    if (isAllFilteredSelected) {
-      const next = new Set(selectedSalaryIds);
-      filteredSalaries.forEach(s => next.delete(s.id));
-      setSelectedSalaryIds(next);
-    } else {
-      const next = new Set(selectedSalaryIds);
-      filteredSalaries.forEach(s => next.add(s.id));
-      setSelectedSalaryIds(next);
-    }
-  };
-
   const handleAdminCreateAdvance = () => {
     if (!adminAdvAmount || !adminAdvType || (!adminAdvDriver && currentUser?.role === 'ADMIN')) {
       alert("Vui lòng nhập đầy đủ thông tin tạm ứng.");
@@ -874,64 +756,6 @@ export default function App() {
                 </div>
             </Card>
         </div>
-    </div>
-  );
-
-  const renderSalaryManagement = () => (
-    <div className="space-y-6 animate-fade-in">
-        <Card className="border-t-4 border-[#2c4aa0]">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><IconCurrency className="w-6 h-6 text-[#2c4aa0]" /> Quản lý Lương chuyến</h2>
-                    <p className="text-sm text-gray-500 mt-1">Hệ thống ghi nhận và quản lý thanh toán chuyến vận chuyển.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {selectedSalaryIds.size > 0 && <Button onClick={handleBulkDeleteSalaries} variant="danger" className="animate-pulse">Xóa hàng loạt ({selectedSalaryIds.size})</Button>}
-                    <Button onClick={() => { setImportPreviewRecords([]); setShowImportModal(true); }} variant="secondary" className="bg-blue-50/50"><IconPlus className="w-4 h-4" /> Import từ Sheets</Button>
-                </div>
-            </div>
-            <div className="bg-gray-50/50 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100">
-                <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Từ ngày</label><input type="date" className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2c4aa0]/20 outline-none transition-all" value={salaryStartDate} onChange={e => setSalaryStartDate(e.target.value)} /></div>
-                <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Đến ngày</label><input type="date" className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2c4aa0]/20 outline-none transition-all" value={salaryEndDate} onChange={e => setSalaryEndDate(e.target.value)} /></div>
-                <div><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Loại hàng</label><select className="w-full p-2 text-sm border border-gray-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#2c4aa0]/20 transition-all" value={salaryCargoFilter} onChange={e => setSalaryCargoFilter(e.target.value)}><option value="">Tất cả</option><option value="CONT">Container</option><option value="PALLET">Pallet</option></select></div>
-                <Button variant="ghost" onClick={() => { setSalaryStartDate(''); setSalaryEndDate(''); setSalaryCargoFilter(''); setSelectedSalaryIds(new Set()); }} className="text-xs">Xóa lọc</Button>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-                <table className="w-full text-left text-[11px] text-gray-600 border-collapse">
-                    <thead className="bg-gray-50 text-gray-500 font-bold border-b">
-                        <tr>
-                            <th className="p-3 text-center w-10"><input type="checkbox" className="rounded border-gray-300 text-[#2c4aa0] focus:ring-[#2c4aa0]" checked={isAllFilteredSelected} onChange={toggleAllSalariesOnPage} /></th>
-                            <th className="p-3 uppercase tracking-tighter">Ngày VC</th>
-                            <th className="p-3 uppercase tracking-tighter">Tài xế</th>
-                            <th className="p-3 uppercase tracking-tighter">Loại hàng</th>
-                            <th className="p-3 uppercase tracking-tighter">Số CONT / DO</th>
-                            <th className="p-3 text-right">Lương chuyến</th>
-                            <th className="p-3 text-right"> Làm hàng</th>
-                            <th className="p-3 text-center">Tác vụ</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {filteredSalaries.map(s => (
-                            <tr key={s.id} className={`group hover:bg-[#f8f9ff] transition-colors ${selectedSalaryIds.has(s.id) ? 'bg-blue-50' : ''}`}>
-                                <td className="p-3 text-center"><input type="checkbox" className="rounded border-gray-300 text-[#2c4aa0] focus:ring-[#2c4aa0]" checked={selectedSalaryIds.has(s.id)} onChange={() => { const next = new Set(selectedSalaryIds); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setSelectedSalaryIds(next); }} /></td>
-                                <td className="p-3 whitespace-nowrap font-medium text-gray-400">{formatDate(s.transportDate)}</td>
-                                <td className="p-3 font-semibold text-gray-800">{s.driverName}</td>
-                                <td className="p-3 text-center"><span className="px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-500">{s.cargoType}</span></td>
-                                <td className="p-3 font-mono font-medium text-blue-600">{s.refNumber}</td>
-                                <td className="p-3 text-right font-bold text-[#2c4aa0]">{formatCurrency(s.salary)}</td>
-                                <td className="p-3 text-right font-bold text-orange-600">{formatCurrency(s.handlingFee)}</td>
-                                <td className="p-3 text-center">
-                                  <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => setEditingSalaryRecord(s)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-lg transition-colors"><IconEdit className="w-4 h-4"/></button>
-                                    <button onClick={() => { if(window.confirm("Xóa dòng lương này?")) setSalaryRecords(salaryRecords.filter(x => x.id !== s.id)); }} className="p-1.5 text-red-400 hover:bg-red-100 rounded-lg transition-colors"><IconTrash className="w-4 h-4"/></button>
-                                  </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
     </div>
   );
 
@@ -1264,7 +1088,7 @@ export default function App() {
             <div className="flex gap-4">
               <Button 
                 variant="ghost" 
-                className="px-8 py-4 text-xs uppercase font-black tracking-widest text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl"
+                className="px-8 py-4 text-xs uppercase font-black tracking-widest text-slate-400 hover:text-rose-50 hover:bg-rose-50 rounded-2xl"
                 onClick={() => {
                   setAdminNewDriver(''); setAdminNewAmount(''); setAdminNewNote(''); setAdminNewFullTank(false);
                 }}
@@ -1394,26 +1218,23 @@ export default function App() {
     // Filtered data based on date range
     const fAdvances = advanceRequests.filter(a => a.requestDate >= start && a.requestDate <= end && a.status === RequestStatus.APPROVED);
     const fFuel = requests.filter(r => r.requestDate >= start && r.requestDate <= end && r.status === RequestStatus.APPROVED);
-    const fSalary = salaryRecords.filter(s => s.transportDate >= start && s.transportDate <= end);
 
     // Categories Breakdown
     const totalFuel = fFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
-    const totalSalary = fSalary.reduce((s, r) => s + r.salary + r.handlingFee, 0);
     const totalUnsettledAdv = fAdvances.filter(a => !a.isSettled).reduce((s, a) => s + a.amount, 0);
-    const totalOverall = totalFuel + totalSalary + totalUnsettledAdv;
+    const totalOverall = totalFuel + totalUnsettledAdv;
 
     // Aggregate everything by Driver for the master table
     const byDriver: any = {};
     drivers.forEach(d => {
-        byDriver[d.fullName] = { fuel: 0, salary: 0, unsettledAdv: 0, total: 0 };
+        byDriver[d.fullName] = { fuel: 0, unsettledAdv: 0, total: 0 };
     });
 
     fFuel.forEach(r => { if(byDriver[r.driverName]) byDriver[r.driverName].fuel += (r.approvedAmount || 0); });
-    fSalary.forEach(s => { if(byDriver[s.driverName]) byDriver[s.driverName].salary += (s.salary + s.handlingFee); });
     fAdvances.forEach(a => { if(!a.isSettled && byDriver[a.driverName]) byDriver[a.driverName].unsettledAdv += a.amount; });
     
     Object.keys(byDriver).forEach(name => {
-        byDriver[name].total = byDriver[name].fuel + byDriver[name].salary + byDriver[name].unsettledAdv;
+        byDriver[name].total = byDriver[name].fuel + byDriver[name].unsettledAdv;
     });
 
     return (
@@ -1440,24 +1261,17 @@ export default function App() {
               </div>
 
               {/* Top Row: Overall KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
                   <div className="bg-[#2c4aa0] p-6 rounded-3xl text-white shadow-2xl shadow-blue-200 ring-4 ring-blue-50">
                       <div className="text-[10px] font-black uppercase opacity-60 mb-2 tracking-widest">Tổng chi phí vận hành</div>
                       <div className="text-3xl font-black">{formatCurrency(totalOverall)}</div>
-                      <div className="mt-4 pt-4 border-t border-white/10 text-[9px] font-bold opacity-70">Bao gồm Dầu, Lương và Nợ tạm ứng</div>
+                      <div className="mt-4 pt-4 border-t border-white/10 text-[9px] font-bold opacity-70">Bao gồm Dầu và Nợ tạm ứng</div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                       <div className="text-[10px] font-black uppercase text-blue-500 mb-2 tracking-widest">Tổng chi phí Nhiên liệu</div>
                       <div className="text-2xl font-black text-slate-800">{formatCurrency(totalFuel)}</div>
                       <div className="mt-3 h-1.5 bg-blue-50 rounded-full overflow-hidden">
                           <div className="h-full bg-blue-500" style={{ width: totalOverall > 0 ? `${(totalFuel / totalOverall) * 100}%` : '0%' }}></div>
-                      </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="text-[10px] font-black uppercase text-emerald-500 mb-2 tracking-widest">Tổng chi phí Nhân sự</div>
-                      <div className="text-2xl font-black text-slate-800">{formatCurrency(totalSalary)}</div>
-                      <div className="mt-3 h-1.5 bg-emerald-50 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500" style={{ width: totalOverall > 0 ? `${(totalSalary / totalOverall) * 100}%` : '0%' }}></div>
                       </div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
@@ -1483,7 +1297,6 @@ export default function App() {
                               <tr>
                                   <th className="p-4 border-b border-slate-100">Họ tên Tài xế</th>
                                   <th className="p-4 border-b border-slate-100 text-right">Chi phí Dầu</th>
-                                  <th className="p-4 border-b border-slate-100 text-right">Lương chuyến</th>
                                   <th className="p-4 border-b border-slate-100 text-right text-amber-600">Nợ Tạm ứng</th>
                                   <th className="p-4 border-b border-slate-100 text-right bg-slate-50 text-slate-800">Tổng cộng</th>
                               </tr>
@@ -1495,7 +1308,6 @@ export default function App() {
                                           <div className="font-black text-slate-700">{name}</div>
                                       </td>
                                       <td className="p-4 text-right font-bold text-slate-500">{formatCurrency(data.fuel)}</td>
-                                      <td className="p-4 text-right font-bold text-slate-500">{formatCurrency(data.salary)}</td>
                                       <td className="p-4 text-right font-black text-amber-500">{formatCurrency(data.unsettledAdv)}</td>
                                       <td className="p-4 text-right bg-slate-50/30 group-hover:bg-blue-50/50">
                                           <div className="font-black text-[#2c4aa0] text-sm">{formatCurrency(data.total)}</div>
@@ -1504,7 +1316,7 @@ export default function App() {
                                   </tr>
                               ))}
                               {Object.keys(byDriver).length === 0 && (
-                                  <tr><td colSpan={5} className="p-12 text-center text-slate-300 italic font-medium">Không tìm thấy dữ liệu tài xế trong kỳ</td></tr>
+                                  <tr><td colSpan={4} className="p-12 text-center text-slate-300 italic font-medium">Không tìm thấy dữ liệu tài xế trong kỳ</td></tr>
                               )}
                           </tbody>
                       </table>
@@ -1864,10 +1676,6 @@ export default function App() {
               <IconWallet className={`w-5 h-5 ${activeTab === 'APPROVE_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Duyệt tạm ứng</span>
             </button>
-            <button onClick={() => setActiveTab('SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconCurrency className={`w-5 h-5 ${activeTab === 'SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Lương chuyến</span>
-            </button>
             
             <h3 className="px-3 py-2 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">BÁO CÁO</h3>
             <button onClick={() => setActiveTab('REPORTS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
@@ -1907,7 +1715,6 @@ export default function App() {
         {activeTab === 'DASHBOARD' && renderDashboard()}
         {activeTab === 'APPROVE_FUEL' && renderApproveFuel()}
         {activeTab === 'APPROVE_ADVANCE' && renderApproveAdvance()}
-        {activeTab === 'SALARY' && renderSalaryManagement()}
         {activeTab === 'OPERATION' && renderOperationManagement()}
         {activeTab === 'ADVANCE_SETTINGS' && renderAdvanceSettings()}
         {activeTab === 'FUEL_SETTINGS' && renderFuelSettings()}
@@ -2002,7 +1809,7 @@ export default function App() {
               >
                 <IconKey className="w-5 h-5" />
               </button>
-              <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-500 transition-colors" title="Đăng xuất">
+              <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-50 transition-colors" title="Đăng xuất">
                 <IconXCircle className="w-6 h-6" />
               </button>
             </div>
@@ -2111,78 +1918,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {showImportModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full p-8 flex flex-col max-h-[90vh] border-none">
-            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-black text-slate-800">Import từ Google Sheets</h3>
-              <button onClick={()=>setShowImportModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><IconXCircle className="w-8 h-8 text-slate-300 hover:text-rose-500"/></button>
-            </div>
-            {importPreviewRecords.length === 0 ? (
-                <>
-                    <textarea className="w-full flex-1 p-4 border border-gray-200 rounded-3xl font-mono text-[11px] outline-none focus:ring-4 focus:ring-blue-100 transition-all resize-none" placeholder="Dán dữ liệu vào đây (Ctrl+V)..." value={importText} onChange={e=>setImportText(e.target.value)} />
-                    <div className="flex gap-4 mt-8">
-                      <Button variant="ghost" className="flex-1" onClick={()=>setShowImportModal(false)}>Hủy bỏ</Button>
-                      <Button onClick={handleParseImport} className="flex-[2] py-4">Kiểm tra dữ liệu</Button>
-                    </div>
-                </>
-            ) : (
-                <div className="flex flex-col flex-1 overflow-hidden">
-                    <div className="overflow-auto flex-1 border border-gray-100 rounded-2xl bg-slate-50/50">
-                      <table className="w-full text-left text-[10px] border-collapse">
-                        <thead className="bg-slate-100 sticky top-0 z-10 border-b border-gray-200">
-                          <tr><th className="p-2 uppercase font-bold text-gray-500">Tài xế</th><th className="p-2 uppercase font-bold text-gray-500">Số Cont</th><th className="p-2 text-right uppercase font-bold text-gray-500">Lương chuyến</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {importPreviewRecords.map((r,i)=>(<tr key={i} className="hover:bg-white"><td className="p-2 font-semibold">{r.driverName}</td><td className="p-2 font-mono text-blue-600">{r.refNumber}</td><td className="p-2 text-right font-bold">{formatCurrency(r.salary)}</td></tr>))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="flex gap-4 mt-8">
-                      <Button variant="ghost" className="flex-1" onClick={()=>setImportPreviewRecords([])}>Quay lại sửa</Button>
-                      <Button onClick={handleConfirmImport} className="flex-[2] py-4">Xác nhận Lưu ({importPreviewRecords.length} dòng)</Button>
-                    </div>
-                </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {editingSalaryRecord && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-auto border-none shadow-2xl scale-in">
-              <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
-                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Chi tiết chuyến vận chuyển</h3>
-                  <button onClick={() => setEditingSalaryRecord(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><IconXCircle className="w-8 h-8 text-slate-300 hover:text-rose-500" /></button>
-              </div>
-              <form onSubmit={handleSaveSalaryRecord} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Ngày vận chuyển</label>
-                  <input name="transportDate" type="date" required defaultValue={editingSalaryRecord.transportDate} className="w-full p-3 border border-gray-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Họ tên Tài xế</label>
-                  <input name="driverName" required defaultValue={editingSalaryRecord.driverName} className="w-full p-3 border border-gray-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
-                </div>
-                <div className="md:col-span-2 grid grid-cols-2 gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="col-span-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Mức lương cơ bản</label>
-                    <input name="salary" type="number" required defaultValue={editingSalaryRecord.salary} className="w-full p-3 border border-gray-200 rounded-2xl text-sm font-black text-[#2c4aa0] focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Chi phí làm hàng</label>
-                    <input name="handlingFee" type="number" defaultValue={editingSalaryRecord.handlingFee} className="w-full p-3 border border-gray-200 rounded-2xl text-sm font-black text-orange-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all" />
-                  </div>
-                </div>
-                <div className="md:col-span-2 flex gap-4 pt-6">
-                  <Button variant="ghost" className="flex-1" onClick={() => setEditingSalaryRecord(null)}>Hủy bỏ</Button>
-                  <Button type="submit" className="flex-[2] py-4 shadow-lg shadow-blue-200">Cập nhật thông tin</Button>
-                </div>
-              </form>
-            </div>
-        </div>
-      )}
       
       <style>{`
         @keyframes fadeIn {
@@ -2202,6 +1937,37 @@ export default function App() {
 }
 
 function DriverView() {
-    // This is handled inside App component now
-    return null;
+    const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'REPORTS'>('FUEL');
+    const [newRequestDate, setNewRequestDate] = useState(new Date().toISOString().split('T')[0]);
+    
+    // In a real scenario, this would use context or props
+    return (
+        <div className="max-w-xl mx-auto space-y-8 animate-fade-in">
+            <div className="bg-white rounded-2xl p-1.5 border border-gray-100 shadow-sm flex sticky top-20 z-10 backdrop-blur-md bg-white/90">
+                <button onClick={() => setDriverTab('FUEL')} className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all ${driverTab === 'FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
+                  <IconGasPump className="w-6 h-6 mb-1" /><span className="text-[10px] font-bold uppercase">Đổ dầu</span>
+                </button>
+                <button onClick={() => setDriverTab('ADVANCE')} className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all ${driverTab === 'ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
+                  <IconWallet className="w-6 h-6 mb-1" /><span className="text-[10px] font-bold uppercase">Tạm ứng</span>
+                </button>
+            </div>
+
+            {driverTab === 'FUEL' && (
+                <Card className="border-t-4 border-[#2c4aa0]">
+                  <h2 className="text-xl font-black text-[#2c4aa0] mb-6 flex items-center gap-2">Gửi yêu cầu cấp dầu</h2>
+                  <div className="space-y-5">
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Ngày dự kiến đổ</label>
+                        <input type="date" value={newRequestDate} onChange={e=>setNewRequestDate(e.target.value)} className="w-full p-3 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-medium" />
+                    </div>
+                    <div className="p-4 bg-blue-50/50 rounded-2xl text-[#2c4aa0] border border-blue-100/50">
+                        <div className="text-[10px] font-bold uppercase opacity-60 mb-1">Trạng thái</div>
+                        <div className="text-lg font-black flex items-center gap-2">Hệ thống sẵn sàng tiếp nhận</div>
+                    </div>
+                    <Button className="w-full py-4 text-base shadow-xl">Gửi yêu cầu duyệt ngay</Button>
+                  </div>
+                </Card>
+            )}
+        </div>
+    );
 }

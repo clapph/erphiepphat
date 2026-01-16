@@ -1,4 +1,3 @@
-
 export enum RequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -85,37 +84,6 @@ export interface Vehicle {
   status: VehicleStatus;
 }
 
-export type CargoType = 'CONT' | 'PALLET' | 'TRANSFER' | 'GLASS';
-
-export interface SalaryRecord {
-  id: string;
-  transportDate: string; // Ngày VC
-  driverName: string; // Tài xế
-  cargoType: CargoType; // Loại hàng
-  
-  // Ref numbers
-  refNumber: string; // Số CONT / DO
-
-  // Quantities
-  quantity20: number; // SL Cont 20
-  quantity40: number; // SL Cont 40
-  quantityOther: number; // SL Pallet / Tấn
-
-  // Locations
-  pickupWarehouse: string; // Kho Đóng
-  deliveryWarehouse: string; // Kho Nhập
-  
-  // Optional locations (Only for CONT)
-  depotLocation?: string; // Depot Lấy Rỗng/Full
-  returnLocation?: string; // Hạ Cont/Trả Rỗng
-
-  // Financials
-  salary: number; // Lương
-  handlingFee: number; // Làm hàng
-  
-  notes?: string; // Ghi chú
-}
-
 export interface User {
   id: string;
   username: string;
@@ -125,4 +93,4 @@ export interface User {
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'SALARY' | 'USERS' | 'FUEL_SETTINGS';
+export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'USERS' | 'FUEL_SETTINGS';
