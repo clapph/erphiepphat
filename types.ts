@@ -1,3 +1,4 @@
+
 export enum RequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -112,6 +113,13 @@ export interface SalaryRecord {
   notes?: string; // Ghi chú
 }
 
+export interface User {
+  id: string;
+  username: string;
+  password?: string;
+  fullName: string;
+  role: UserRole;
+}
+
 export type UserRole = 'DRIVER' | 'ADMIN';
-// Removed VEHICLES tab, merged into OPERATION
-export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'REPORTS' | 'SALARY';
+export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'REPORTS' | 'SALARY' | 'USERS';
