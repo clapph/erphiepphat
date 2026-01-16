@@ -40,7 +40,6 @@ import {
 } from './components/Icons';
 
 // --- Constants & Mock Data ---
-const PRIMARY_COLOR = '#2c4aa0';
 const BG_COLOR = '#f8fafc'; 
 
 const MOCK_STATIONS: GasStation[] = [
@@ -78,8 +77,8 @@ const MOCK_ASSIGNMENTS: DriverAssignment[] = [
 ];
 
 const MOCK_REQUESTS: FuelRequest[] = [
-  { id: 'r1', driverName: 'Nguyễn Văn A', licensePlate: '51C-123.45', requestDate: '2023-10-25', status: RequestStatus.APPROVED, approvedAmount: 1500000, approvedLiters: 63.8, stationId: '1', approvalDate: '2023-10-25', isFullTank: false },
-  { id: 'r2', driverName: 'Trần Văn B', licensePlate: '59D-987.65', requestDate: '2023-10-24', status: RequestStatus.APPROVED, approvedAmount: 1175000, approvedLiters: 50, stationId: '1', approvalDate: '2023-10-24', isFullTank: false },
+  { id: 'r1', driverName: 'Nguyễn Văn A', licensePlate: '51C-123.45', requestDate: '2023-10-25', status: RequestStatus.APPROVED, approvedAmount: 1500000, approvedLiters: 63.8, stationId: '1', approvalDate: '2023-10-25', isFullTank: false, isPaid: false },
+  { id: 'r2', driverName: 'Trần Văn B', licensePlate: '59D-987.65', requestDate: '2023-10-24', status: RequestStatus.APPROVED, approvedAmount: 1175000, approvedLiters: 50, stationId: '1', approvalDate: '2023-10-24', isFullTank: false, isPaid: true },
 ];
 
 const MOCK_ADVANCE_TYPES: AdvanceType[] = [
@@ -293,6 +292,11 @@ export default function App() {
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // Report Filters
+  const [reportStartDate, setReportStartDate] = useState('');
+  const [reportEndDate, setReportEndDate] = useState('');
+  const [reportPaymentStatus, setReportPaymentStatus] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
+
   // Derived State
   const autoAssignedVehicle = useMemo(() => {
     return getAssignedVehicle(currentUser?.fullName || '', newRequestDate, assignments);
@@ -465,6 +469,7 @@ export default function App() {
       requestDate: newRequestDate,
       status: RequestStatus.PENDING,
       notes: newRequestNote,
+      isPaid: false
     };
     setRequests([newReq, ...requests]);
     const formattedMsg = `YÊU CẦU DUYỆT DẦU\nBiển số xe: ${newReq.licensePlate}\nNgày dự kiến: ${formatDate(newReq.requestDate)}\nTài xế: ${newReq.driverName}${newReq.notes ? `\nGhi chú: ${newReq.notes}` : ''}`;
@@ -495,7 +500,8 @@ export default function App() {
       approvedLiters: parseFloat(liters.toFixed(2)),
       stationId: adminNewStation,
       approvalDate: now.toISOString(),
-      isFullTank: adminNewFullTank
+      isFullTank: adminNewFullTank,
+      isPaid: false
     };
     setRequests([newReq, ...requests]);
     setAdminNewDriver('');
@@ -521,7 +527,8 @@ export default function App() {
       approvedLiters: parseFloat(liters.toFixed(2)),
       stationId: adminStation,
       approvalDate: now.toISOString(),
-      isFullTank: isAdminFullTank
+      isFullTank: isAdminFullTank,
+      isPaid: false
     };
     setRequests(requests.map(r => r.id === updatedReq.id ? updatedReq : r));
     setIsModalOpen(false);
@@ -536,6 +543,12 @@ export default function App() {
     setRequests(requests.map(r => r.id === selectedRequest.id ? { ...r, status: RequestStatus.REJECTED } : r));
     setIsModalOpen(false);
     setSelectedRequest(null);
+  };
+
+  const handleMarkAsPaid = (id: string) => {
+    if (window.confirm("Xác nhận đã thanh toán phiếu này cho cây xăng?")) {
+      setRequests(requests.map(r => r.id === id ? { ...r, isPaid: true } : r));
+    }
   };
 
   const handleCopy = () => {
@@ -843,7 +856,7 @@ export default function App() {
                     <div className="max-h-[300px] overflow-auto rounded-xl border border-gray-100">
                         <table className="w-full text-xs text-left">
                           <thead className="bg-gray-50 text-gray-400 font-bold uppercase tracking-wider"><tr className="border-b"><th className="p-3">Họ tên</th><th className="p-3 text-right">Thao tác</th></tr></thead>
-                          <tbody className="divide-y divide-gray-50">{drivers.map(d => (<tr key={d.id} className="hover:bg-gray-50"><td className="p-3 font-semibold text-gray-700">{d.fullName}</td><td className="p-3 flex justify-end gap-2"><button onClick={() => handleEditDriver(d)} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><IconEdit className="w-4 h-4" /></button><button onClick={() => handleDeleteDriver(d.id)} className="p-1 text-red-400 hover:bg-red-50 rounded"><IconTrash className="w-4 h-4" /></button></td></tr>))}</tbody>
+                          <tbody className="divide-y divide-gray-50">{drivers.map(d => (<tr key={d.id} className="hover:bg-gray-50"><td className="p-3 font-semibold text-gray-700">{d.fullName}</td><td className="p-3 flex justify-end gap-2"><button onClick={() => handleEditDriver(d)} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><IconEdit className="w-4 h-4" /></button><button onClick={() => handleDeleteDriver(d.id)} className="p-1 text-red-400 hover:bg-red-100 rounded"><IconTrash className="w-4 h-4" /></button></td></tr>))}</tbody>
                         </table>
                     </div>
                 </div>
@@ -897,69 +910,8 @@ export default function App() {
     </div>
   );
 
-  const renderFuelManagement = () => (
+  const renderApproveFuel = () => (
     <div className="space-y-8 animate-fade-in">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="border-l-4 border-amber-400">
-                <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><IconTrendingUp className="w-5 h-5 text-amber-500" /> Biến động giá dầu</h2>
-                <form onSubmit={handleSaveFuelPrice} className="space-y-4 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                    <div className="grid grid-cols-2 gap-4 items-end">
-                        <div className="col-span-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Ngày & Giờ</label>
-                          <div className="flex gap-2">
-                            <input name="date" type="date" required className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
-                            <input name="time" type="time" required className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
-                          </div>
-                        </div>
-                        <div className="col-span-1">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Giá (VNĐ/Lít)</label>
-                          <input name="price" type="number" required placeholder="VD: 23500" className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
-                        </div>
-                    </div>
-                    <Button type="submit" variant="primary" className="w-full text-xs">Cập nhật bảng giá</Button>
-                </form>
-                <div className="max-h-48 overflow-auto space-y-2 rounded-xl">
-                  {prices.sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(p => (
-                    <div key={p.id} className="flex justify-between items-center text-xs p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all group">
-                      <div className="text-gray-500 font-medium">{formatDateTime(p.date)}</div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-bold text-[#2c4aa0] bg-blue-50 px-2 py-1 rounded-lg">{formatCurrency(p.pricePerLiter)}/L</span>
-                        <button onClick={() => handleDeletePrice(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:text-rose-500 transition-all"><IconTrash className="w-3 h-3"/></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-            </Card>
-
-            <Card className="border-l-4 border-[#2c4aa0]">
-                <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><IconGasPump className="w-5 h-5 text-[#2c4aa0]" /> Hệ thống Cây xăng</h2>
-                <form onSubmit={handleSaveStation} className="space-y-4 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên trạm</label>
-                      <input name="name" placeholder="VD: Petrolimex Số 1" required className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Địa chỉ</label>
-                      <input name="address" placeholder="Quận/Huyện..." className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
-                    </div>
-                  </div>
-                  <Button type="submit" variant="primary" className="w-full text-xs">Thêm đối tác mới</Button>
-                </form>
-                <div className="max-h-48 overflow-auto space-y-2 rounded-xl">
-                  {stations.map(s => (
-                    <div key={s.id} className="flex justify-between items-center p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all group">
-                      <div>
-                        <div className="font-bold text-gray-700">{s.name}</div>
-                        <div className="text-[10px] text-gray-400">{s.address || 'Chưa cập nhật địa chỉ'}</div>
-                      </div>
-                      <button onClick={() => handleDeleteStation(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:text-rose-500 transition-all"><IconTrash className="w-3 h-3"/></button>
-                    </div>
-                  ))}
-                </div>
-            </Card>
-        </div>
-
         <Card className="border border-blue-100 bg-white shadow-xl">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
@@ -1102,14 +1054,14 @@ export default function App() {
         </Card>
 
         <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><IconDocument className="w-5 h-5 text-gray-400" /> Nhật ký giao dịch dầu</h2>
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><IconDocument className="w-5 h-5 text-gray-400" /> Nhật ký giao dịch dầu (Chưa thanh toán)</h2>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <table className="w-full text-left text-sm text-gray-600 border-collapse">
                 <thead className="bg-gray-50/80 text-gray-400 font-bold uppercase tracking-wider text-[10px] border-b border-gray-100">
-                  <tr><th className="p-4">Ngày giao dịch</th><th className="p-4">Tài xế / Biển số</th><th className="p-4 text-right">Giá trị duyệt</th><th className="p-4 text-center">Trạng thái</th><th className="p-4 text-center">Tác vụ</th></tr>
+                  <tr><th className="p-4">Ngày giao dịch</th><th className="p-4">Tài xế / Biển số</th><th className="p-4 text-right">Giá trị duyệt</th><th className="p-4 text-center">Trạm</th><th className="p-4 text-center">Tác vụ</th></tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {requests.filter(r=>r.status!=='PENDING').map(req => (
+                  {requests.filter(r => r.status === RequestStatus.APPROVED && !r.isPaid).map(req => (
                     <tr key={req.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="p-4 whitespace-nowrap text-gray-500 font-medium">{formatDate(req.requestDate)}</td>
                       <td className="p-4">
@@ -1119,9 +1071,10 @@ export default function App() {
                       <td className="p-4 text-right font-bold text-slate-700">
                         {req.isFullTank ? <span className="text-[#2c4aa0] bg-[#2c4aa0]/5 px-2 py-0.5 rounded">Đầy bình</span> : formatCurrency(req.approvedAmount || 0)}
                       </td>
-                      <td className="p-4 text-center"><Badge status={req.status} /></td>
+                      <td className="p-4 text-center text-xs font-semibold">{stations.find(s => s.id === req.stationId)?.name || '-'}</td>
                       <td className="p-4 text-center">
                         <div className="flex justify-center gap-2">
+                          <button onClick={() => handleMarkAsPaid(req.id)} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all" title="Đánh dấu đã thanh toán"><IconCheckCircle className="w-4 h-4"/></button>
                           <button onClick={() => {
                             setCopyMessage(`PHIEU CAP DAU\nXe: ${req.licensePlate}\nTai xe: ${req.driverName}\nNgay: ${formatDate(req.requestDate)}\nDuyet: ${req.isFullTank ? 'Đầy bình' : formatCurrency(req.approvedAmount || 0)}`);
                             setShowCopyModal(true);
@@ -1131,6 +1084,9 @@ export default function App() {
                       </td>
                     </tr>
                   ))}
+                  {requests.filter(r => r.status === RequestStatus.APPROVED && !r.isPaid).length === 0 && (
+                    <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">Không có giao dịch dầu chưa thanh toán</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1138,34 +1094,221 @@ export default function App() {
     </div>
   );
 
-  const renderReports = () => (
+  const renderFuelSettings = () => (
+    <div className="space-y-8 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="border-l-4 border-amber-400">
+                <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><IconTrendingUp className="w-5 h-5 text-amber-500" /> Biến động giá dầu</h2>
+                <form onSubmit={handleSaveFuelPrice} className="space-y-4 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                    <div className="grid grid-cols-2 gap-4 items-end">
+                        <div className="col-span-1">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Ngày & Giờ</label>
+                          <div className="flex gap-2">
+                            <input name="date" type="date" required className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
+                            <input name="time" type="time" required className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
+                          </div>
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Giá (VNĐ/Lít)</label>
+                          <input name="price" type="number" required placeholder="VD: 23500" className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
+                        </div>
+                    </div>
+                    <Button type="submit" variant="primary" className="w-full text-xs">Cập nhật bảng giá</Button>
+                </form>
+                <div className="max-h-48 overflow-auto space-y-2 rounded-xl">
+                  {prices.sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).map(p => (
+                    <div key={p.id} className="flex justify-between items-center text-xs p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all group">
+                      <div className="text-gray-500 font-medium">{formatDateTime(p.date)}</div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-bold text-[#2c4aa0] bg-blue-50 px-2 py-1 rounded-lg">{formatCurrency(p.pricePerLiter)}/L</span>
+                        <button onClick={() => handleDeletePrice(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:text-rose-500 transition-all"><IconTrash className="w-3 h-3"/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+            </Card>
+
+            <Card className="border-l-4 border-[#2c4aa0]">
+                <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><IconGasPump className="w-5 h-5 text-[#2c4aa0]" /> Hệ thống Cây xăng</h2>
+                <form onSubmit={handleSaveStation} className="space-y-4 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên trạm</label>
+                      <input name="name" placeholder="VD: Petrolimex Số 1" required className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Địa chỉ</label>
+                      <input name="address" placeholder="Quận/Huyện..." className="w-full p-2 text-xs border border-gray-200 rounded-lg outline-none" />
+                    </div>
+                  </div>
+                  <Button type="submit" variant="primary" className="w-full text-xs">Thêm đối tác mới</Button>
+                </form>
+                <div className="max-h-48 overflow-auto space-y-2 rounded-xl">
+                  {stations.map(s => (
+                    <div key={s.id} className="flex justify-between items-center p-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all group">
+                      <div>
+                        <div className="font-bold text-gray-700">{s.name}</div>
+                        <div className="text-[10px] text-gray-400">{s.address || 'Chưa cập nhật địa chỉ'}</div>
+                      </div>
+                      <button onClick={() => handleDeleteStation(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:text-rose-500 transition-all"><IconTrash className="w-3 h-3"/></button>
+                    </div>
+                  ))}
+                </div>
+            </Card>
+        </div>
+    </div>
+  );
+
+  const renderReports = () => {
+    // Helper to filter data by date and payment status
+    const filterFuelData = (req: FuelRequest) => {
+      const dateMatch = (!reportStartDate || req.requestDate >= reportStartDate) && 
+                        (!reportEndDate || req.requestDate <= reportEndDate);
+      const paymentMatch = reportPaymentStatus === 'ALL' || 
+                          (reportPaymentStatus === 'PAID' && req.isPaid) || 
+                          (reportPaymentStatus === 'UNPAID' && !req.isPaid);
+      return dateMatch && paymentMatch && req.status === RequestStatus.APPROVED;
+    };
+
+    const filteredFuel = requests.filter(filterFuelData);
+    const paidFuel = filteredFuel.filter(r => r.isPaid);
+    const unpaidFuel = filteredFuel.filter(r => !r.isPaid);
+    
+    // Grouping by Vehicle
+    const fuelByVehicle = filteredFuel.reduce((acc: any, curr) => {
+      if (!acc[curr.licensePlate]) acc[curr.licensePlate] = { amount: 0, liters: 0, count: 0, paid: 0, unpaid: 0 };
+      acc[curr.licensePlate].amount += (curr.approvedAmount || 0);
+      acc[curr.licensePlate].liters += (curr.approvedLiters || 0);
+      acc[curr.licensePlate].count += 1;
+      if (curr.isPaid) acc[curr.licensePlate].paid += (curr.approvedAmount || 0);
+      else acc[curr.licensePlate].unpaid += (curr.approvedAmount || 0);
+      return acc;
+    }, {});
+
+    // Grouping by Gas Station
+    const fuelByStation = filteredFuel.reduce((acc: any, curr) => {
+      const stationName = stations.find(s => s.id === curr.stationId)?.name || 'Khác';
+      if (!acc[stationName]) acc[stationName] = { amount: 0, liters: 0, paid: 0, unpaid: 0 };
+      acc[stationName].amount += (curr.approvedAmount || 0);
+      acc[stationName].liters += (curr.approvedLiters || 0);
+      if (curr.isPaid) acc[stationName].paid += (curr.approvedAmount || 0);
+      else acc[stationName].unpaid += (curr.approvedAmount || 0);
+      return acc;
+    }, {});
+
+    const totalFuelAmount = filteredFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
+    const totalPaidFuel = paidFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
+    const totalUnpaidFuel = unpaidFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
+    
+    // Salary record filtering
+    const filteredSalariesForReport = salaryRecords.filter(s => {
+        const dateMatch = (!reportStartDate || s.transportDate >= reportStartDate) && 
+                          (!reportEndDate || s.transportDate <= reportEndDate);
+        return dateMatch;
+    });
+    const totalSalaryAmount = filteredSalariesForReport.reduce((s, sa) => s + sa.salary + sa.handlingFee, 0);
+
+    return (
       <div className="space-y-6 animate-fade-in">
           <Card className="border-t-4 border-[#2c4aa0]">
-              <h2 className="text-xl font-bold mb-8 flex items-center gap-2 text-gray-800"><IconChartBar className="w-6 h-6 text-[#2c4aa0]"/> Báo cáo tài chính & vận hành</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-3xl text-white shadow-xl shadow-blue-200">
-                    <div className="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Tổng chi phí kỳ này</div>
-                    <div className="text-3xl font-black mb-4">
-                      {formatCurrency(requests.filter(r=>r.status==='APPROVED').reduce((s,r)=>s+(r.approvedAmount||0),0) + salaryRecords.reduce((s,sa)=>s+sa.salary+sa.handlingFee, 0))}
-                    </div>
-                    <div className="text-[10px] bg-white/20 p-2 rounded-xl border border-white/20 inline-block">Bao gồm: Nhiên liệu + Lương chuyến</div>
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconChartBar className="w-6 h-6 text-[#2c4aa0]"/> Báo cáo Tổng hợp & Công nợ Nhiên liệu</h2>
+              
+              {/* Report Filters */}
+              <div className="bg-slate-50 p-5 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 border border-slate-100">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Từ ngày</label>
+                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Đến ngày</label>
+                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Trạng thái lọc thanh toán</label>
+                  <select className="w-full p-2 text-sm border rounded-xl" value={reportPaymentStatus} onChange={e => setReportPaymentStatus(e.target.value as any)}>
+                    <option value="ALL">Tất cả (Xem tổng quát)</option>
+                    <option value="PAID">Đã thanh toán (Check đối chiếu)</option>
+                    <option value="UNPAID">Chưa thanh toán (Xem nợ cây xăng)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <Button variant="ghost" className="w-full text-xs" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportPaymentStatus('ALL'); }}>Làm mới lọc</Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-[#2c4aa0] p-5 rounded-3xl text-white shadow-xl shadow-blue-200">
+                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Tổng chi phí kỳ báo cáo</div>
+                    <div className="text-2xl font-black">{formatCurrency(totalFuelAmount + totalSalaryAmount)}</div>
                   </div>
-                  <Card className="border border-slate-100">
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Chi phí Nhiên liệu</div>
-                    <div className="text-2xl font-bold text-slate-800">
-                      {formatCurrency(requests.filter(r=>r.status==='APPROVED').reduce((s,r)=>s+(r.approvedAmount||0),0))}
-                    </div>
-                  </Card>
-                  <Card className="border border-slate-100">
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Chi phí Lương chuyến</div>
-                    <div className="text-2xl font-bold text-slate-800">
-                      {formatCurrency(salaryRecords.reduce((s,sa)=>s+sa.salary+sa.handlingFee, 0))}
-                    </div>
-                  </Card>
+                  <div className="bg-emerald-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-100">
+                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Dầu đã thanh toán</div>
+                    <div className="text-2xl font-black">{formatCurrency(totalPaidFuel)}</div>
+                  </div>
+                  <div className="bg-amber-500 p-5 rounded-3xl text-white shadow-xl shadow-amber-100">
+                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Nợ dầu cây xăng</div>
+                    <div className="text-2xl font-black">{formatCurrency(totalUnpaidFuel)}</div>
+                  </div>
+                  <div className="bg-slate-700 p-5 rounded-3xl text-white shadow-xl shadow-slate-200">
+                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Tổng lương chuyến</div>
+                    <div className="text-2xl font-black">{formatCurrency(totalSalaryAmount)}</div>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest flex items-center justify-between">
+                    Phân loại theo từng xe
+                    {reportPaymentStatus !== 'ALL' && <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded">{reportPaymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}</span>}
+                  </h3>
+                  <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
+                        <tr><th className="p-4">Biển số</th><th className="p-4 text-center">Đã thanh toán</th><th className="p-4 text-right">Chưa thanh toán</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {Object.entries(fuelByVehicle).map(([plate, data]: any) => (
+                          <tr key={plate} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-4 font-black text-slate-700">{plate}</td>
+                            <td className="p-4 text-center font-bold text-emerald-600">{formatCurrency(data.paid)}</td>
+                            <td className="p-4 text-right font-black text-rose-500">{formatCurrency(data.unpaid)}</td>
+                          </tr>
+                        ))}
+                        {Object.keys(fuelByVehicle).length === 0 && (
+                          <tr><td colSpan={3} className="p-8 text-center text-slate-400 italic">Không có dữ liệu nhiên liệu trong kỳ</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest">Theo Trạm cung ứng (Cây xăng)</h3>
+                  <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
+                        <tr><th className="p-4">Cây xăng</th><th className="p-4 text-right">Tổng Lít</th><th className="p-4 text-right">Tổng nợ (Unpaid)</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {Object.entries(fuelByStation).map(([station, data]: any) => (
+                          <tr key={station} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-4 font-bold text-slate-700">{station}</td>
+                            <td className="p-4 text-right font-bold text-slate-500">{data.liters.toFixed(2)}L</td>
+                            <td className="p-4 text-right font-black text-amber-600">{formatCurrency(data.unpaid)}</td>
+                          </tr>
+                        ))}
+                        {Object.keys(fuelByStation).length === 0 && (
+                          <tr><td colSpan={3} className="p-8 text-center text-slate-400 italic">Không có dữ liệu nhiên liệu trong kỳ</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
           </Card>
       </div>
-  );
+    );
+  };
 
   const renderUserManagement = () => (
     <div className="space-y-8 animate-fade-in">
@@ -1261,9 +1404,9 @@ export default function App() {
               <IconHome className={`w-5 h-5 ${activeTab === 'DASHBOARD' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Tổng quan</span>
             </button>
-            <button onClick={() => setActiveTab('FUEL')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconGasPump className={`w-5 h-5 ${activeTab === 'FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Nhiên liệu</span>
+            <button onClick={() => setActiveTab('APPROVE_FUEL')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+              <IconGasPump className={`w-5 h-5 ${activeTab === 'APPROVE_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+              <span>Duyệt cấp dầu</span>
             </button>
             <button onClick={() => setActiveTab('ADVANCES')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'ADVANCES' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconWallet className={`w-5 h-5 ${activeTab === 'ADVANCES' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
@@ -1278,6 +1421,10 @@ export default function App() {
               <IconUsers className={`w-5 h-5 ${activeTab === 'OPERATION' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Vận hành</span>
             </button>
+            <button onClick={() => setActiveTab('FUEL_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'FUEL_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+              <IconGasPump className={`w-5 h-5 ${activeTab === 'FUEL_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+              <span>Nhiên liệu</span>
+            </button>
             <button onClick={() => setActiveTab('USERS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'USERS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconUser className={`w-5 h-5 ${activeTab === 'USERS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Người dùng</span>
@@ -1291,10 +1438,11 @@ export default function App() {
 
       <div className="flex-1 space-y-8">
         {activeTab === 'DASHBOARD' && renderDashboard()}
-        {activeTab === 'FUEL' && renderFuelManagement()}
+        {activeTab === 'APPROVE_FUEL' && renderApproveFuel()}
         {activeTab === 'SALARY' && renderSalaryManagement()}
         {activeTab === 'OPERATION' && renderOperationManagement()}
         {activeTab === 'ADVANCES' && renderAdvanceManagement()}
+        {activeTab === 'FUEL_SETTINGS' && renderFuelSettings()}
         {activeTab === 'USERS' && renderUserManagement()}
         {activeTab === 'REPORTS' && renderReports()}
       </div>

@@ -30,7 +30,8 @@ export interface FuelRequest {
   approvedLiters?: number;
   stationId?: string;
   approvalDate?: string;
-  isFullTank?: boolean; // New field
+  isFullTank?: boolean;
+  isPaid?: boolean; // New field for payment status
 }
 
 export interface AdvanceType {
@@ -122,4 +123,4 @@ export interface User {
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'FUEL' | 'ADVANCES' | 'OPERATION' | 'REPORTS' | 'SALARY' | 'USERS';
+export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'ADVANCES' | 'OPERATION' | 'REPORTS' | 'SALARY' | 'USERS' | 'FUEL_SETTINGS';
