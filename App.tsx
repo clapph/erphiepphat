@@ -57,7 +57,7 @@ const IconCloudArrowUp = ({ className }: { className?: string }) => (
 );
 
 // --- Constants & Mock Data ---
-const BG_COLOR = '#f8fafc'; 
+const BG_COLOR = '#f5f7fa'; 
 
 const MOCK_STATIONS: GasStation[] = [
   { id: '1', name: 'Petrolimex 01', address: '123 Lê Lợi, Q1' },
@@ -85,7 +85,6 @@ const MOCK_VEHICLE_TYPES: VehicleType[] = [
 const MOCK_VEHICLES: Vehicle[] = [
   { id: 'v1', licensePlate: '51C-123.45', vehicleType: 'Xe Tải 5 Tấn', inspectionDate: '2023-01-10', inspectionExpiryDate: '2024-01-10', status: 'OPERATING' },
   { id: 'v2', licensePlate: '59D-987.65', vehicleType: 'Xe Container', inspectionDate: '2023-06-15', inspectionExpiryDate: '2024-06-15', status: 'OPERATING' },
-  { id: 'v3', licensePlate: '60A-111.22', vehicleType: 'Xe Bán Tải', inspectionDate: '2023-10-15', inspectionExpiryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'INACTIVE' }, 
 ];
 
 const MOCK_ASSIGNMENTS: DriverAssignment[] = [
@@ -128,8 +127,6 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     qtyPalletTon: 0,
     qty20: 1,
     qty40: 0,
-    outOfPocketLRHR: 50000,
-    outOfPocketSC: 0,
     tripSalary: 850000,
     handlingFee: 100000
   },
@@ -146,8 +143,6 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     qtyPalletTon: 15,
     qty20: 0,
     qty40: 0,
-    outOfPocketLRHR: 0,
-    outOfPocketSC: 20000,
     tripSalary: 1200000,
     handlingFee: 150000
   }
@@ -399,10 +394,11 @@ export default function App() {
     const lines = importText.trim().split('\n');
     const newRecords: SalaryRecord[] = [];
     
-    // Attempting to parse Tab-Separated Values (common copy-paste from Google Sheets)
+    // Attempting to parse 13 Tab-Separated Values (copy-paste from Google Sheets)
+    // Structure: 0:NGÀY VC | 1:TÀI XẾ | 2:LOẠI HÀNG | 3:KHO | 4:ĐỊA ĐIỂM | 5:DEPOT LẤY | 6:HẠ/TRẢ | 7:SỐ CONT | 8:SL PALLET | 9:C20 | 10:C40 | 11:LƯƠNG CHUYẾN | 12:TIỀN LÀM HÀNG
     lines.forEach(line => {
       const parts = line.split('\t');
-      if (parts.length >= 15) {
+      if (parts.length >= 13) {
         newRecords.push({
           id: Math.random().toString(36).substr(2, 9),
           transportDate: parts[0]?.trim(),
@@ -416,10 +412,8 @@ export default function App() {
           qtyPalletTon: parseFloat(parts[8]?.replace(/,/g, '') || '0') || 0,
           qty20: parseInt(parts[9] || '0') || 0,
           qty40: parseInt(parts[10] || '0') || 0,
-          outOfPocketLRHR: parseFloat(parts[11]?.replace(/,/g, '') || '0') || 0,
-          outOfPocketSC: parseFloat(parts[12]?.replace(/,/g, '') || '0') || 0,
-          tripSalary: parseFloat(parts[13]?.replace(/,/g, '') || '0') || 0,
-          handlingFee: parseFloat(parts[14]?.replace(/,/g, '') || '0') || 0
+          tripSalary: parseFloat(parts[11]?.replace(/,/g, '') || '0') || 0,
+          handlingFee: parseFloat(parts[12]?.replace(/,/g, '') || '0') || 0
         });
       }
     });
@@ -430,7 +424,7 @@ export default function App() {
       setShowSalaryImport(false);
       alert(`Đã import thành công ${newRecords.length} chuyến hàng.`);
     } else {
-      alert("Định dạng dữ liệu không hợp lệ. Vui lòng kiểm tra lại copy từ Google Sheets.");
+      alert("Định dạng dữ liệu không hợp lệ. Vui lòng kiểm tra lại copy từ Google Sheets (Yêu cầu 13 cột).");
     }
   };
 
@@ -913,21 +907,19 @@ export default function App() {
                 <table className="w-full text-left text-[11px] border-collapse min-w-[1500px]">
                     <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-tighter sticky top-0 z-10">
                         <tr>
-                            <th className="p-3">Ngày VC</th>
-                            <th className="p-3">Tài xế</th>
-                            <th className="p-3">Loại hàng</th>
-                            <th className="p-3">Kho Đóng nhập</th>
-                            <th className="p-3">Địa điểm</th>
-                            <th className="p-3">Depot Lấy</th>
-                            <th className="p-3">Hạ/Trả Rỗng</th>
-                            <th className="p-3">Số CONT/DO</th>
-                            <th className="p-3 text-right">Pallet/Tấn</th>
-                            <th className="p-3 text-center">C20</th>
-                            <th className="p-3 text-center">C40</th>
-                            <th className="p-3 text-right">Chi LR/HR</th>
-                            <th className="p-3 text-right">Cược SC</th>
-                            <th className="p-3 text-right">Lương chuyến</th>
-                            <th className="p-3 text-right">Làm hàng</th>
+                            <th className="p-3">NGÀY VC</th>
+                            <th className="p-3">TÀI XẾ</th>
+                            <th className="p-3">LOẠI HÀNG</th>
+                            <th className="p-3">KHO ĐÓNG NHẬP</th>
+                            <th className="p-3">ĐỊA ĐIỂM ĐÓNG NHẬP</th>
+                            <th className="p-3">DEPOT LẤY RỖNG/FULL</th>
+                            <th className="p-3">HẠ CONT/TRẢ RỖNG</th>
+                            <th className="p-3">SỐ CONT/DO</th>
+                            <th className="p-3 text-right">SL PALLET/TẤN</th>
+                            <th className="p-3 text-center">SL CONT20</th>
+                            <th className="p-3 text-center">SL CONT40</th>
+                            <th className="p-3 text-right">LƯƠNG CHUYẾN</th>
+                            <th className="p-3 text-right">TIỀN LÀM HÀNG</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
@@ -948,22 +940,18 @@ export default function App() {
                                 <td className="p-3 text-center">
                                     {s.qty40 > 0 && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black">{s.qty40}</span>}
                                 </td>
-                                <td className="p-3 text-right font-semibold text-slate-500">{s.outOfPocketLRHR > 0 ? formatCurrency(s.outOfPocketLRHR) : '-'}</td>
-                                <td className="p-3 text-right font-semibold text-slate-500">{s.outOfPocketSC > 0 ? formatCurrency(s.outOfPocketSC) : '-'}</td>
                                 <td className="p-3 text-right font-black text-[#2c4aa0]">{formatCurrency(s.tripSalary)}</td>
                                 <td className="p-3 text-right font-black text-amber-600">{formatCurrency(s.handlingFee)}</td>
                             </tr>
                         ))}
                         {filteredSalaries.length === 0 && (
-                            <tr><td colSpan={15} className="p-12 text-center text-slate-400 italic">Không tìm thấy bản ghi lương chuyến phù hợp</td></tr>
+                            <tr><td colSpan={13} className="p-12 text-center text-slate-400 italic">Không tìm thấy bản ghi lương chuyến phù hợp</td></tr>
                         )}
                     </tbody>
                     {filteredSalaries.length > 0 && (
                         <tfoot className="bg-slate-50 border-t-2 border-slate-200 sticky bottom-0 z-10">
                             <tr className="font-black text-slate-800 text-[12px]">
                                 <td colSpan={11} className="p-4 text-right uppercase tracking-widest text-slate-400">Tổng cộng kỳ này:</td>
-                                <td className="p-4 text-right text-slate-600">{formatCurrency(filteredSalaries.reduce((sum, s) => sum + s.outOfPocketLRHR, 0))}</td>
-                                <td className="p-4 text-right text-slate-600">{formatCurrency(filteredSalaries.reduce((sum, s) => sum + s.outOfPocketSC, 0))}</td>
                                 <td className="p-4 text-right text-[#2c4aa0] bg-blue-50/50">{formatCurrency(filteredSalaries.reduce((sum, s) => sum + s.tripSalary, 0))}</td>
                                 <td className="p-4 text-right text-amber-600 bg-amber-50/50">{formatCurrency(filteredSalaries.reduce((sum, s) => sum + s.handlingFee, 0))}</td>
                             </tr>
@@ -985,13 +973,13 @@ export default function App() {
                         <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
                             <p className="text-xs text-blue-700 leading-relaxed font-medium">
                                 Hệ thống hỗ trợ copy dữ liệu trực tiếp từ Google Sheets. 
-                                <br/>Thứ tự cột: NGÀY VC | TÀI XẾ | LOẠI HÀNG | KHO | ĐỊA ĐIỂM | DEPOT LẤY | HẠ/TRẢ | SỐ CONT | SL PALLET | C20 | C40 | LR/HR | CƯỢC SC | LƯƠNG | LÀM HÀNG.
+                                <br/>Thứ tự cột (13 cột): NGÀY VC | TÀI XẾ | LOẠI HÀNG | KHO | ĐỊA ĐIỂM | DEPOT LẤY | HẠ/TRẢ | SỐ CONT | SL PALLET | C20 | C40 | LƯƠNG | LÀM HÀNG.
                             </p>
                         </div>
                         <textarea 
                             value={importText}
                             onChange={e => setImportText(e.target.value)}
-                            placeholder="Dán nội dung từ Google Sheets tại đây..."
+                            placeholder="Dán nội dung 13 cột từ Google Sheets tại đây..."
                             className="w-full h-48 p-4 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 font-mono text-xs"
                         />
                     </div>
@@ -1506,29 +1494,6 @@ export default function App() {
                   </div>
               </div>
 
-              {/* Top Row: Overall KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-                  <div className="bg-[#2c4aa0] p-6 rounded-3xl text-white shadow-2xl shadow-blue-200 ring-4 ring-blue-50">
-                      <div className="text-[10px] font-black uppercase opacity-60 mb-2 tracking-widest">Tổng chi phí vận hành</div>
-                      <div className="text-3xl font-black">{formatCurrency(totalOverall)}</div>
-                      <div className="mt-4 pt-4 border-t border-white/10 text-[9px] font-bold opacity-70">Bao gồm Dầu và Nợ tạm ứng</div>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="text-[10px] font-black uppercase text-blue-500 mb-2 tracking-widest">Tổng chi phí Nhiên liệu</div>
-                      <div className="text-2xl font-black text-slate-800">{formatCurrency(totalFuel)}</div>
-                      <div className="mt-3 h-1.5 bg-blue-50 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500" style={{ width: totalOverall > 0 ? `${(totalFuel / totalOverall) * 100}%` : '0%' }}></div>
-                      </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="text-[10px] font-black uppercase text-amber-500 mb-2 tracking-widest">Dư nợ Tạm ứng (Unsettled)</div>
-                      <div className="text-2xl font-black text-slate-800">{formatCurrency(totalUnsettledAdv)}</div>
-                      <div className="mt-3 h-1.5 bg-amber-50 rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-500" style={{ width: totalOverall > 0 ? `${(totalUnsettledAdv / totalOverall) * 100}%` : '0%' }}></div>
-                      </div>
-                  </div>
-              </div>
-
               {/* Master Table: All costs by Driver */}
               <div className="space-y-4">
                   <div className="flex items-center justify-between px-2">
@@ -1561,9 +1526,6 @@ export default function App() {
                                       </td>
                                   </tr>
                               ))}
-                              {Object.keys(byDriver).length === 0 && (
-                                  <tr><td colSpan={4} className="p-12 text-center text-slate-300 italic font-medium">Không tìm thấy dữ liệu tài xế trong kỳ</td></tr>
-                              )}
                           </tbody>
                       </table>
                   </div>
@@ -1585,10 +1547,7 @@ export default function App() {
     };
 
     const filteredFuel = requests.filter(filterFuelData);
-    const paidFuel = filteredFuel.filter(r => r.isPaid);
-    const unpaidFuel = filteredFuel.filter(r => !r.isPaid);
     
-    // Grouping by Vehicle
     const fuelByVehicle = filteredFuel.reduce((acc: any, curr) => {
       if (!acc[curr.licensePlate]) acc[curr.licensePlate] = { amount: 0, liters: 0, count: 0, paid: 0, unpaid: 0 };
       acc[curr.licensePlate].amount += (curr.approvedAmount || 0);
@@ -1599,111 +1558,40 @@ export default function App() {
       return acc;
     }, {});
 
-    // Grouping by Gas Station
-    const fuelByStation = filteredFuel.reduce((acc: any, curr) => {
-      const stationName = stations.find(s => s.id === curr.stationId)?.name || 'Khác';
-      if (!acc[stationName]) acc[stationName] = { amount: 0, liters: 0, paid: 0, unpaid: 0 };
-      acc[stationName].amount += (curr.approvedAmount || 0);
-      acc[stationName].liters += (curr.approvedLiters || 0);
-      if (curr.isPaid) acc[stationName].paid += (curr.approvedAmount || 0);
-      else acc[stationName].unpaid += (curr.approvedAmount || 0);
-      return acc;
-    }, {});
-
     const totalFuelAmount = filteredFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
-    const totalPaidFuel = paidFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
-    const totalUnpaidFuel = unpaidFuel.reduce((s, r) => s + (r.approvedAmount || 0), 0);
+    const totalUnpaidFuel = filteredFuel.filter(r => !r.isPaid).reduce((s, r) => s + (r.approvedAmount || 0), 0);
 
     return (
       <div className="space-y-6 animate-fade-in">
           <Card className="border-t-4 border-[#2c4aa0]">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconGasPump className="w-6 h-6 text-[#2c4aa0]"/> Báo cáo Nhiên liệu & Công nợ Cây xăng</h2>
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconGasPump className="w-6 h-6 text-[#2c4aa0]"/> Báo cáo Nhiên liệu & Công nợ</h2>
               
-              <div className="bg-slate-50 p-5 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 border border-slate-100">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Từ ngày</label>
-                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Đến ngày</label>
-                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Trạng thái lọc thanh toán</label>
-                  <select className="w-full p-2 text-sm border rounded-xl" value={reportPaymentStatus} onChange={e => setReportPaymentStatus(e.target.value as any)}>
-                    <option value="ALL">Tất cả</option>
-                    <option value="PAID">Đã thanh toán</option>
-                    <option value="UNPAID">Chưa thanh toán</option>
-                  </select>
-                </div>
-                <div className="flex items-end">
-                  <Button variant="ghost" className="w-full text-xs" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportPaymentStatus('ALL'); }}>Làm mới lọc</Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-[#2c4aa0] p-5 rounded-3xl text-white shadow-xl shadow-blue-200">
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Tổng tiền duyệt cấp</div>
-                    <div className="text-2xl font-black">{formatCurrency(totalFuelAmount)}</div>
+              <div className="bg-slate-100 p-6 rounded-3xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-slate-500 mb-1 tracking-widest">Tổng tiền duyệt cấp</div>
+                    <div className="text-3xl font-black text-slate-800">{formatCurrency(totalFuelAmount)}</div>
                   </div>
-                  <div className="bg-emerald-600 p-5 rounded-3xl text-white shadow-xl shadow-emerald-100">
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Đã thanh toán</div>
-                    <div className="text-2xl font-black">{formatCurrency(totalPaidFuel)}</div>
-                  </div>
-                  <div className="bg-amber-500 p-5 rounded-3xl text-white shadow-xl shadow-amber-100">
-                    <div className="text-[10px] font-bold uppercase opacity-80 mb-1 tracking-widest">Còn nợ cây xăng</div>
-                    <div className="text-2xl font-black">{formatCurrency(totalUnpaidFuel)}</div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-rose-500 mb-1 tracking-widest">Còn nợ cây xăng</div>
+                    <div className="text-3xl font-black text-rose-600">{formatCurrency(totalUnpaidFuel)}</div>
                   </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest flex items-center justify-between">
-                    Phân loại theo từng xe
-                  </h3>
-                  <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
-                        <tr><th className="p-4">Biển số</th><th className="p-4 text-center">Đã thanh toán</th><th className="p-4 text-right">Chưa thanh toán</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {Object.entries(fuelByVehicle).map(([plate, data]: any) => (
-                          <tr key={plate} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-4 font-black text-slate-700">{plate}</td>
-                            <td className="p-4 text-center font-bold text-emerald-600">{formatCurrency(data.paid)}</td>
-                            <td className="p-4 text-right font-black text-rose-500">{formatCurrency(data.unpaid)}</td>
-                          </tr>
-                        ))}
-                        {Object.keys(fuelByVehicle).length === 0 && (
-                          <tr><td colSpan={3} className="p-8 text-center text-slate-400 italic">Không có dữ liệu trong kỳ</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest">Theo Trạm cung ứng (Cây xăng)</h3>
-                  <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
-                        <tr><th className="p-4">Cây xăng</th><th className="p-4 text-right">Tổng Lít</th><th className="p-4 text-right">Tổng nợ (Unpaid)</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {Object.entries(fuelByStation).map(([station, data]: any) => (
-                          <tr key={station} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-4 font-bold text-slate-700">{station}</td>
-                            <td className="p-4 text-right font-bold text-slate-500">{data.liters.toFixed(2)}L</td>
-                            <td className="p-4 text-right font-black text-amber-600">{formatCurrency(data.unpaid)}</td>
-                          </tr>
-                        ))}
-                        {Object.keys(fuelByStation).length === 0 && (
-                          <tr><td colSpan={3} className="p-8 text-center text-slate-400 italic">Không có dữ liệu trong kỳ</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+              <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
+                    <tr><th className="p-4">Biển số</th><th className="p-4 text-center">Đã thanh toán</th><th className="p-4 text-right">Chưa thanh toán</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {Object.entries(fuelByVehicle).map(([plate, data]: any) => (
+                      <tr key={plate} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4 font-black text-slate-700">{plate}</td>
+                        <td className="p-4 text-center font-bold text-emerald-600">{formatCurrency(data.paid)}</td>
+                        <td className="p-4 text-right font-black text-rose-500">{formatCurrency(data.unpaid)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
           </Card>
       </div>
@@ -1721,91 +1609,38 @@ export default function App() {
     };
 
     const filteredAdvances = advanceRequests.filter(filterAdvanceData);
-    
-    const advanceByDriver = filteredAdvances.reduce((acc: any, curr) => {
-        if (!acc[curr.driverName]) acc[curr.driverName] = { total: 0, settled: 0, unsettled: 0, count: 0 };
-        acc[curr.driverName].total += curr.amount;
-        if (curr.isSettled) acc[curr.driverName].settled += curr.amount;
-        else acc[curr.driverName].unsettled += curr.amount;
-        acc[curr.driverName].count += 1;
-        return acc;
-    }, {});
-
-    const totalAdvanced = filteredAdvances.reduce((s, a) => s + a.amount, 0);
-    const totalSettled = filteredAdvances.filter(a => a.isSettled).reduce((s, a) => s + a.amount, 0);
     const totalUnsettled = filteredAdvances.filter(a => !a.isSettled).reduce((s, a) => s + a.amount, 0);
 
     return (
       <div className="space-y-6 animate-fade-in">
           <Card className="border-t-4 border-amber-500">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconWallet className="w-6 h-6 text-amber-500"/> Báo cáo Tạm ứng & Công nợ nội bộ</h2>
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconWallet className="w-6 h-6 text-amber-500"/> Báo cáo Tạm ứng nội bộ</h2>
               
-              <div className="bg-slate-50 p-5 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 border border-slate-100">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Từ ngày</label>
-                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Đến ngày</label>
-                  <input type="date" className="w-full p-2 text-sm border rounded-xl" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Trạng thái hoàn ứng</label>
-                  <select className="w-full p-2 text-sm border rounded-xl" value={reportAdvanceStatus} onChange={e => setReportAdvanceStatus(e.target.value as any)}>
-                    <option value="ALL">Tất cả</option>
-                    <option value="SETTLED">Đã hoàn ứng</option>
-                    <option value="UNSETTLED">Chưa hoàn ứng</option>
-                  </select>
-                </div>
-                <div className="flex items-end">
-                  <Button variant="ghost" className="w-full text-xs" onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportAdvanceStatus('ALL'); }}>Làm mới lọc</Button>
-                </div>
+              <div className="bg-amber-500 p-6 rounded-3xl border border-amber-600 mb-8">
+                <div className="text-[11px] font-black uppercase text-white mb-1 tracking-widest">Dư nợ tạm ứng hiện tại</div>
+                <div className="text-3xl font-black text-white">{formatCurrency(totalUnsettled)}</div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-slate-100 p-6 rounded-3xl border border-slate-200">
-                    <div className="text-[11px] font-black uppercase text-slate-500 mb-1 tracking-widest">Tổng tiền tạm ứng</div>
-                    <div className="text-3xl font-black text-slate-800">{formatCurrency(totalAdvanced)}</div>
-                  </div>
-                  <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-                    <div className="text-[11px] font-black uppercase text-emerald-600 mb-1 tracking-widest">Đã hoàn tất hạch toán</div>
-                    <div className="text-3xl font-black text-emerald-700">{formatCurrency(totalSettled)}</div>
-                  </div>
-                  <div className="bg-amber-500 p-6 rounded-3xl border border-amber-100">
-                    <div className="text-[11px] font-black uppercase text-white mb-1 tracking-widest">Dư nợ (Chưa hoàn ứng)</div>
-                    <div className="text-3xl font-black text-white">{formatCurrency(totalUnsettled)}</div>
-                  </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-400 uppercase px-2 tracking-widest">Tổng hợp theo Tài xế</h3>
-                <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
-                      <tr>
-                        <th className="p-4">Tài xế</th>
-                        <th className="p-4 text-center">Số lượt chi</th>
-                        <th className="p-4 text-right">Tổng chi</th>
-                        <th className="p-4 text-right">Đã hoàn</th>
-                        <th className="p-4 text-right">Còn nợ</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {Object.entries(advanceByDriver).map(([driver, data]: any) => (
-                        <tr key={driver} className="hover:bg-slate-50 transition-colors">
-                          <td className="p-4 font-black text-slate-700">{driver}</td>
-                          <td className="p-4 text-center font-bold text-slate-400">{data.count}</td>
-                          <td className="p-4 text-right font-bold text-slate-600">{formatCurrency(data.total)}</td>
-                          <td className="p-4 text-right font-bold text-emerald-600">{formatCurrency(data.settled)}</td>
-                          <td className="p-4 text-right font-black text-rose-500">{formatCurrency(data.unsettled)}</td>
+              <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
+                    <tr><th className="p-4">Tài xế</th><th className="p-4 text-right">Đã hoàn</th><th className="p-4 text-right">Còn nợ</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {drivers.map(d => {
+                      const dAdv = filteredAdvances.filter(a => a.driverName === d.fullName);
+                      const settled = dAdv.filter(a => a.isSettled).reduce((s, a) => s + a.amount, 0);
+                      const unsettled = dAdv.filter(a => !a.isSettled).reduce((s, a) => s + a.amount, 0);
+                      if (settled === 0 && unsettled === 0) return null;
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-4 font-black text-slate-700">{d.fullName}</td>
+                          <td className="p-4 text-right font-bold text-emerald-600">{formatCurrency(settled)}</td>
+                          <td className="p-4 text-right font-black text-rose-500">{formatCurrency(unsettled)}</td>
                         </tr>
-                      ))}
-                      {Object.keys(advanceByDriver).length === 0 && (
-                        <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">Không có dữ liệu tạm ứng trong kỳ</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      )})}
+                  </tbody>
+                </table>
               </div>
           </Card>
       </div>

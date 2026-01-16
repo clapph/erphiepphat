@@ -97,8 +97,6 @@ export interface SalaryRecord {
   qtyPalletTon: number; // SL PALLET/TẤN
   qty20: number; // SL CONT20
   qty40: number; // SL CONT40
-  outOfPocketLRHR: number; // CHI HỘ LR/HR
-  outOfPocketSC: number; // CHI HỘ CƯỢC SC
   tripSalary: number; // LƯƠNG CHUYẾN
   handlingFee: number; // TIỀN LÀM HÀNG
 }
