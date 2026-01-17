@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FuelRequest, 
@@ -961,7 +960,12 @@ export default function App() {
     // Calculate Summary Stats for the filtered selection
     const totalSalaryInView = filteredSalaries.reduce((sum, s) => sum + s.tripSalary, 0);
     const totalHandlingInView = filteredSalaries.reduce((sum, s) => sum + s.handlingFee, 0);
-    const totalTripsInView = filteredSalaries.length;
+    
+    // NEW TRIP LOGIC: 1 Chuyến = Unique combo of Date + Cargo Type + Driver
+    const totalTripsInView = useMemo(() => {
+        const uniqueTrips = new Set(filteredSalaries.map(s => `${s.driverName}|${s.transportDate}|${s.cargoType}`));
+        return uniqueTrips.size;
+    }, [filteredSalaries]);
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -1049,7 +1053,7 @@ export default function App() {
                           type="date" 
                           value={salaryStartDate} 
                           onChange={e => setSalaryStartDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" 
                       />
                   </div>
                   <div className="w-40">
@@ -1058,7 +1062,7 @@ export default function App() {
                           type="date" 
                           value={salaryEndDate} 
                           onChange={e => setSalaryEndDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" 
                       />
                   </div>
                   {(salaryStartDate || salaryEndDate || salaryDriverFilter || salaryCargoFilter) && (
@@ -1335,7 +1339,6 @@ export default function App() {
                                         <td className="p-4 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button onClick={() => handleEditAssignment(a)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-lg"><IconEdit className="w-4 h-4"/></button>
-                                                {/* FIX: Changed 'id' to 'a.id' to correctly reference the assignment ID being deleted */}
                                                 <button onClick={() => handleDeleteAssignment(a.id)} className="p-1.5 text-rose-400 hover:bg-rose-100 rounded-lg"><IconTrash className="w-4 h-4"/></button>
                                             </div>
                                         </td>
@@ -1874,11 +1877,13 @@ export default function App() {
     
     const totalSalary = filteredRecords.reduce((sum, r) => sum + r.tripSalary, 0);
     const totalHandling = filteredRecords.reduce((sum, r) => sum + r.handlingFee, 0);
-    const total20 = filteredRecords.reduce((sum, r) => sum + r.qty20, 0);
-    const total40 = filteredRecords.reduce((sum, r) => sum + r.qty40, 0);
+    const totalPalletTon = filteredRecords.reduce((sum, r) => sum + (r.qtyPalletTon || 0), 0);
+    const total20 = filteredRecords.reduce((sum, r) => sum + (r.qty20 || 0), 0);
+    const total40 = filteredRecords.reduce((sum, r) => sum + (r.qty40 || 0), 0);
 
     const statsByDriver = drivers.map(d => {
       const records = filteredRecords.filter(r => r.driverName === d.fullName);
+      // Logic tính Chuyến: tổ hợp duy nhất của Ngày + Loại hàng của từng tài xế
       const uniqueTrips = new Set(records.map(r => `${r.transportDate}|${r.cargoType}`)).size;
       
       return {
@@ -1886,6 +1891,9 @@ export default function App() {
         count: uniqueTrips,
         salary: records.reduce((sum, r) => sum + r.tripSalary, 0),
         handling: records.reduce((sum, r) => sum + r.handlingFee, 0),
+        qtyPalletTon: records.reduce((sum, r) => sum + (r.qtyPalletTon || 0), 0),
+        qty20: records.reduce((sum, r) => sum + (r.qty20 || 0), 0),
+        qty40: records.reduce((sum, r) => sum + (r.qty40 || 0), 0),
       };
     }).filter(s => s.count > 0).sort((a, b) => b.salary - a.salary);
 
@@ -1906,7 +1914,7 @@ export default function App() {
               <div className="text-2xl font-black text-amber-600">{formatCurrency(totalHandling)}</div>
             </div>
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-              <div className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Sản lượng Container</div>
+              <div className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Sản lượng Container (Kỳ này)</div>
               <div className="text-2xl font-black text-slate-700">
                 {total20}x20' | {total40}x40'
                 <span className="text-xs font-bold block opacity-60">Tổng {total20 + total40} Cont</span>
@@ -1919,9 +1927,12 @@ export default function App() {
               <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
                 <tr>
                   <th className="p-4">Tài xế</th>
-                  <th className="p-4 text-center">Số chuyến (Gộp)</th>
+                  <th className="p-4 text-center">Số chuyến</th>
+                  <th className="p-4 text-center">Pallet / Tấn</th>
+                  <th className="p-4 text-center">Cont 20'</th>
+                  <th className="p-4 text-center">Cont 40'</th>
                   <th className="p-4 text-right">Tổng lương</th>
-                  <th className="p-4 text-right">Tổng tiền làm hàng</th>
+                  <th className="p-4 text-right">Tổng làm hàng</th>
                   <th className="p-4 text-right bg-slate-100 text-slate-800">Cộng tổng</th>
                 </tr>
               </thead>
@@ -1929,7 +1940,10 @@ export default function App() {
                 {statsByDriver.map(s => (
                   <tr key={s.name} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 font-black text-slate-700">{s.name}</td>
-                    <td className="p-4 text-center font-bold text-slate-500">{s.count}</td>
+                    <td className="p-4 text-center font-bold text-slate-400">{s.count}</td>
+                    <td className="p-4 text-center font-bold text-slate-500">{s.qtyPalletTon || '-'}</td>
+                    <td className="p-4 text-center font-bold text-blue-600">{s.qty20 || '-'}</td>
+                    <td className="p-4 text-center font-bold text-blue-600">{s.qty40 || '-'}</td>
                     <td className="p-4 text-right font-bold text-[#2c4aa0]">{formatCurrency(s.salary)}</td>
                     <td className="p-4 text-right font-bold text-amber-600">{formatCurrency(s.handling)}</td>
                     <td className="p-4 text-right font-black bg-slate-50/50 text-slate-800">{formatCurrency(s.salary + s.handling)}</td>
@@ -1938,8 +1952,11 @@ export default function App() {
               </tbody>
               <tfoot className="bg-slate-50 border-t-2">
                 <tr className="font-black text-slate-800">
-                  <td className="p-4">TỔNG CỘNG:</td>
+                  <td className="p-4 uppercase tracking-widest text-[10px]">TỔNG CỘNG:</td>
                   <td className="p-4 text-center">{totalTrips}</td>
+                  <td className="p-4 text-center">{totalPalletTon}</td>
+                  <td className="p-4 text-center text-blue-600">{total20}</td>
+                  <td className="p-4 text-center text-blue-600">{total40}</td>
                   <td className="p-4 text-right text-[#2c4aa0]">{formatCurrency(totalSalary)}</td>
                   <td className="p-4 text-right text-amber-600">{formatCurrency(totalHandling)}</td>
                   <td className="p-4 text-right text-xl">{formatCurrency(totalSalary + totalHandling)}</td>
