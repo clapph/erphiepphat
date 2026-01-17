@@ -168,7 +168,9 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     qty20: 1,
     qty40: 0,
     tripSalary: 850000,
-    handlingFee: 100000
+    handlingFee: 100000,
+    isPaid: true,
+    paymentDate: '2023-11-01'
   },
   {
     id: 's2',
@@ -184,7 +186,8 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     qty20: 0,
     qty40: 0,
     tripSalary: 850000,
-    handlingFee: 100000
+    handlingFee: 100000,
+    isPaid: false
   }
 ];
 
@@ -382,8 +385,13 @@ export default function App() {
   const [salaryEndDate, setSalaryEndDate] = useState('');
   const [salaryDriverFilter, setSalaryDriverFilter] = useState('');
   const [salaryCargoFilter, setSalaryCargoFilter] = useState('');
+  const [salaryPaidFilter, setSalaryPaidFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
   const [showSalaryImport, setShowSalaryImport] = useState(false);
   const [importText, setImportText] = useState('');
+
+  // Driver Date Filters
+  const [drFromDate, setDrFromDate] = useState('');
+  const [drToDate, setDrToDate] = useState('');
 
   // Login State
   const [loginUser, setLoginUser] = useState('');
@@ -406,8 +414,8 @@ export default function App() {
 
   // Derived State
   const autoAssignedVehicle = useMemo(() => {
-    return getAssignedVehicle(currentUser?.fullName || '', newRequestDate, assignments);
-  }, [newRequestDate, assignments, currentUser]);
+    return getAssignedVehicle(currentUser?.fullName || '', new Date().toISOString().split('T')[0], assignments);
+  }, [assignments, currentUser]);
 
   const adminAutoVehicle = useMemo(() => {
     if (!adminNewDriver) return null;
@@ -425,19 +433,23 @@ export default function App() {
       // Driver Filter
       const driverMatch = !salaryDriverFilter || s.driverName === salaryDriverFilter;
       
-      // Cargo Type Filter (Safe check for null/undefined)
+      // Cargo Type Filter
       const cargoText = s.cargoType || '';
       const cargoMatch = !salaryCargoFilter || cargoText.toLowerCase().includes(salaryCargoFilter.toLowerCase().trim());
+
+      // Paid Filter
+      const paidMatch = salaryPaidFilter === 'ALL' || (salaryPaidFilter === 'PAID' ? s.isPaid : !s.isPaid);
       
-      return driverMatch && cargoMatch && dateMatch;
+      return driverMatch && cargoMatch && dateMatch && paidMatch;
     }).sort((a, b) => new Date(a.transportDate).getTime() - new Date(b.transportDate).getTime());
-  }, [salaryRecords, salaryStartDate, salaryEndDate, salaryDriverFilter, salaryCargoFilter]);
+  }, [salaryRecords, salaryStartDate, salaryEndDate, salaryDriverFilter, salaryCargoFilter, salaryPaidFilter]);
 
   const clearSalaryFilters = () => {
     setSalaryStartDate('');
     setSalaryEndDate('');
     setSalaryDriverFilter('');
     setSalaryCargoFilter('');
+    setSalaryPaidFilter('ALL');
   };
 
   // --- Auth Handlers ---
@@ -458,6 +470,8 @@ export default function App() {
     setCurrentUser(null);
     setLoginUser('');
     setLoginPass('');
+    setDrFromDate('');
+    setDrToDate('');
   };
 
   const handleUpdatePassword = () => {
@@ -479,7 +493,6 @@ export default function App() {
     const newRecords: SalaryRecord[] = [];
     
     // Attempting to parse 13 Tab-Separated Values (copy-paste from Google Sheets)
-    // Structure: 0:NGÀY VC | 1:TÀI XẾ | 2:LOẠI HÀNG | 3:KHO | 4:ĐỊA ĐIỂM | 5:DEPOT LẤY | 6:HẠ/TRẢ | 7:SỐ CONT | 8:SL PALLET | 9:C20 | 10:C40 | 11:LƯƠNG | 12:LÀM HÀNG
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 13) {
@@ -497,7 +510,8 @@ export default function App() {
           qty20: parseInt(parts[9] || '0') || 0,
           qty40: parseInt(parts[10] || '0') || 0,
           tripSalary: parseFloat(parts[11]?.replace(/,/g, '') || '0') || 0,
-          handlingFee: parseFloat(parts[12]?.replace(/,/g, '') || '0') || 0
+          handlingFee: parseFloat(parts[12]?.replace(/,/g, '') || '0') || 0,
+          isPaid: false
         });
       }
     });
@@ -506,7 +520,7 @@ export default function App() {
       setPreviewSalaryRecords(newRecords);
       setIsImportPreviewing(true);
     } else {
-      alert("Định dạng dữ liệu không hợp lệ. Vui lòng kiểm tra lại copy từ Google Sheets (Yêu cầu ít nhất 13 cột tab-separated).");
+      alert("Định dạng dữ liệu không hợp lệ. Vui lòng kiểm tra lại copy từ Google Sheets.");
     }
   };
 
@@ -523,6 +537,26 @@ export default function App() {
   const handleDeleteSalary = (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa bản ghi lương chuyến này?")) {
       setSalaryRecords(salaryRecords.filter(s => s.id !== id));
+    }
+  };
+
+  const handleMarkSalaryAsPaid = (id: string) => {
+    if (window.confirm("Xác nhận đã thanh toán lương cho chuyến hàng này?")) {
+      setSalaryRecords(prev => prev.map(s => s.id === id ? { ...s, isPaid: true, paymentDate: new Date().toISOString().split('T')[0] } : s));
+    }
+  };
+
+  const handleBulkSalaryPayment = () => {
+    const unpaidRecords = filteredSalaries.filter(s => !s.isPaid);
+    if (unpaidRecords.length === 0) {
+      alert("Không có phiếu lương chưa thanh toán trong danh sách đang lọc.");
+      return;
+    }
+    if (window.confirm(`Bạn có chắc chắn muốn thanh toán HÀNG LOẠT cho ${unpaidRecords.length} phiếu lương đang hiển thị?`)) {
+      const now = new Date().toISOString().split('T')[0];
+      const unpaidIds = new Set(unpaidRecords.map(r => r.id));
+      setSalaryRecords(prev => prev.map(s => unpaidIds.has(s.id) ? { ...s, isPaid: true, paymentDate: now } : s));
+      alert(`Đã thanh toán thành công ${unpaidRecords.length} phiếu lương.`);
     }
   };
 
@@ -683,7 +717,7 @@ export default function App() {
 
   const handleDriverSubmit = () => {
     if (!autoAssignedVehicle) {
-      alert('Bạn chưa được phân công xe cho ngày này. Vui lòng liên hệ Admin.');
+      alert('Bạn chưa được phân công xe. Vui lòng liên hệ Admin.');
       return;
     }
     const newReq: FuelRequest = {
@@ -1186,12 +1220,12 @@ export default function App() {
     // Calculate Summary Stats for the filtered selection
     const totalSalaryInView = filteredSalaries.reduce((sum, s) => sum + s.tripSalary, 0);
     const totalHandlingInView = filteredSalaries.reduce((sum, s) => sum + s.handlingFee, 0);
-    
-    // NEW TRIP LOGIC: 1 Chuyến = Unique combo of Date + Cargo Type + Driver
     const totalTripsInView = useMemo(() => {
         const uniqueTrips = new Set(filteredSalaries.map(s => `${s.driverName}|${s.transportDate}|${s.cargoType}`));
         return uniqueTrips.size;
     }, [filteredSalaries]);
+
+    const unpaidCount = filteredSalaries.filter(s => !s.isPaid).length;
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -1203,8 +1237,13 @@ export default function App() {
                   </h2>
                   <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Hệ thống hạch toán chi phí & doanh thu vận tải</p>
               </div>
-              <div className="flex gap-3">
-                  <Button variant="secondary" className="px-6 py-3 bg-slate-50 border-slate-200" onClick={() => {/* Future: Export CSV */}}>
+              <div className="flex flex-wrap gap-3">
+                  {unpaidCount > 0 && (
+                    <Button variant="success" className="px-6 py-3 bg-emerald-600 shadow-lg shadow-emerald-200" onClick={handleBulkSalaryPayment}>
+                        <IconCheckCircle className="w-5 h-5" /> Thanh toán hàng loạt ({unpaidCount})
+                    </Button>
+                  )}
+                  <Button variant="secondary" className="px-6 py-3 bg-slate-50 border-slate-200" onClick={() => {}}>
                       <IconArrowDownTray className="w-5 h-5" /> Xuất Excel
                   </Button>
                   <Button variant="primary" className="px-6 py-3 shadow-lg shadow-blue-200" onClick={() => setShowSalaryImport(true)}>
@@ -1253,45 +1292,47 @@ export default function App() {
           {/* Improved Filters Toolbar */}
           <Card className="p-4 border-none shadow-sm">
               <div className="flex flex-wrap items-end gap-4">
-                  <div className="flex-1 min-w-[200px]">
+                  <div className="flex-1 min-w-[150px]">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Tài xế</label>
                       <select 
                           value={salaryDriverFilter} 
                           onChange={e => setSalaryDriverFilter(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all text-sm font-semibold text-slate-700"
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
                       >
                           <option value="">Tất cả tài xế</option>
                           {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
                       </select>
                   </div>
-                  <div className="flex-1 min-w-[200px]">
+                  <div className="flex-1 min-w-[150px]">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Tìm loại hàng</label>
                       <input 
                           value={salaryCargoFilter} 
                           onChange={e => setSalaryCargoFilter(e.target.value)} 
                           placeholder="VD: Cont, Pallet..." 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all text-sm font-semibold" 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold" 
                       />
                   </div>
                   <div className="w-40">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Thanh toán</label>
+                      <select 
+                          value={salaryPaidFilter} 
+                          onChange={e => setSalaryPaidFilter(e.target.value as any)} 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold"
+                      >
+                          <option value="ALL">Tất cả</option>
+                          <option value="PAID">Đã trả</option>
+                          <option value="UNPAID">Chưa trả</option>
+                      </select>
+                  </div>
+                  <div className="w-36">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Từ ngày</label>
-                      <input 
-                          type="date" 
-                          value={salaryStartDate} 
-                          onChange={e => setSalaryStartDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" 
-                      />
+                      <input type="date" value={salaryStartDate} onChange={e => setSalaryStartDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" />
                   </div>
-                  <div className="w-40">
+                  <div className="w-36">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Đến ngày</label>
-                      <input 
-                          type="date" 
-                          value={salaryEndDate} 
-                          onChange={e => setSalaryEndDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" 
-                      />
+                      <input type="date" value={salaryEndDate} onChange={e => setSalaryEndDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" />
                   </div>
-                  {(salaryStartDate || salaryEndDate || salaryDriverFilter || salaryCargoFilter) && (
+                  {(salaryStartDate || salaryEndDate || salaryDriverFilter || salaryCargoFilter || salaryPaidFilter !== 'ALL') && (
                       <button onClick={clearSalaryFilters} className="h-[42px] px-4 text-xs font-black text-rose-500 hover:bg-rose-50 rounded-2xl transition-all uppercase tracking-tighter">
                           Xóa lọc
                       </button>
@@ -1302,22 +1343,23 @@ export default function App() {
           {/* Main Table Content - Full 13 Columns */}
           <Card className="p-0 overflow-hidden border-none shadow-xl">
               <div className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-slate-200">
-                  <table className="w-full text-left text-[11px] border-collapse min-w-[1800px]">
+                  <table className="w-full text-left text-[11px] border-collapse min-w-[2000px]">
                       <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-tighter sticky top-0 z-10">
                           <tr>
                               <th className="p-4 border-r border-white/10">1. NGÀY VC</th>
                               <th className="p-4 border-r border-white/10">2. TÀI XẾ</th>
                               <th className="p-4 border-r border-white/10">3. LOẠI HÀNG</th>
-                              <th className="p-4 border-r border-white/10">4. KHO ĐÓNG NHẬP</th>
-                              <th className="p-4 border-r border-white/10">5. ĐỊA ĐIỂM ĐÓNG NHẬP</th>
-                              <th className="p-4 border-r border-white/10">6. DEPOT LẤY RỖNG/FULL</th>
-                              <th className="p-4 border-r border-white/10">7. HẠ CONT/TRẢ RỖNG</th>
-                              <th className="p-4 border-r border-white/10">8. SỐ CONT/DO</th>
-                              <th className="p-4 text-center border-r border-white/10">9. SL PALLET/TẤN</th>
-                              <th className="p-4 text-center border-r border-white/10">10. SL CONT20</th>
-                              <th className="p-4 text-center border-r border-white/10">11. SL CONT40</th>
-                              <th className="p-4 text-right border-r border-white/10">12. LƯƠNG CHUYẾN</th>
-                              <th className="p-4 text-right border-r border-white/10">13. TIỀN LÀM HÀNG</th>
+                              <th className="p-4 border-r border-white/10">4. TRẠNG THÁI</th>
+                              <th className="p-4 border-r border-white/10">5. KHO ĐÓNG NHẬP</th>
+                              <th className="p-4 border-r border-white/10">6. ĐỊA ĐIỂM ĐÓNG NHẬP</th>
+                              <th className="p-4 border-r border-white/10">7. DEPOT LẤY RỖNG/FULL</th>
+                              <th className="p-4 border-r border-white/10">8. HẠ CONT/TRẢ RỖNG</th>
+                              <th className="p-4 border-r border-white/10">9. SỐ CONT/DO</th>
+                              <th className="p-4 text-center border-r border-white/10">10. SL PALLET/TẤN</th>
+                              <th className="p-4 text-center border-r border-white/10">11. SL CONT20</th>
+                              <th className="p-4 text-center border-r border-white/10">12. SL CONT40</th>
+                              <th className="p-4 text-right border-r border-white/10">13. LƯƠNG CHUYẾN</th>
+                              <th className="p-4 text-right border-r border-white/10">14. TIỀN LÀM HÀNG</th>
                               <th className="p-4 text-center">TÁC VỤ</th>
                           </tr>
                       </thead>
@@ -1325,11 +1367,21 @@ export default function App() {
                           {filteredSalaries.map(s => (
                               <tr key={s.id} className="hover:bg-blue-50 transition-colors group">
                                   <td className="p-4 font-medium text-slate-500 whitespace-nowrap">{s.transportDate}</td>
-                                  <td className="p-4 font-black text-slate-800">{s.driverName}</td>
+                                  <td className="p-4 font-black text-slate-800 whitespace-nowrap">{s.driverName}</td>
                                   <td className="p-4">
                                       <span className={`px-2 py-0.5 rounded font-black uppercase text-[9px] ${s.cargoType?.toLowerCase().includes('cont') ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
                                           {s.cargoType}
                                       </span>
+                                  </td>
+                                  <td className="p-4">
+                                      {s.isPaid ? (
+                                          <div className="flex flex-col">
+                                              <span className="text-[10px] font-black text-emerald-600 uppercase flex items-center gap-1"><IconCheckCircle className="w-3 h-3" /> Đã trả</span>
+                                              <span className="text-[8px] text-slate-400 font-bold">{formatDate(s.paymentDate!)}</span>
+                                          </div>
+                                      ) : (
+                                          <span className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Chờ trả</span>
+                                      )}
                                   </td>
                                   <td className="p-4 text-slate-600 truncate max-w-[150px]">{s.pickupWarehouse}</td>
                                   <td className="p-4 text-slate-600 truncate max-w-[150px]">{s.deliveryWarehouse}</td>
@@ -1342,41 +1394,25 @@ export default function App() {
                                   <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(s.tripSalary)}</td>
                                   <td className="p-4 text-right font-black text-amber-600">{formatCurrency(s.handlingFee)}</td>
                                   <td className="p-4 text-center">
-                                      <button 
-                                          onClick={() => handleDeleteSalary(s.id)}
-                                          className="p-2 text-rose-300 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all"
-                                      >
-                                          <IconTrash className="w-4 h-4" />
-                                      </button>
-                                  </td>
-                              </tr>
-                          ))}
-                          {filteredSalaries.length === 0 && (
-                              <tr>
-                                  <td colSpan={14} className="p-16 text-center">
-                                      <div className="flex flex-col items-center gap-3 opacity-30">
-                                          <IconDocument className="w-12 h-12" />
-                                          <p className="font-bold uppercase tracking-widest text-sm italic">Không tìm thấy dữ liệu lương chuyến</p>
+                                      <div className="flex items-center justify-center gap-2">
+                                          {!s.isPaid && (
+                                              <button onClick={() => handleMarkSalaryAsPaid(s.id)} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all" title="Xác nhận thanh toán">
+                                                  <IconCheckCircle className="w-5 h-5" />
+                                              </button>
+                                          )}
+                                          <button onClick={() => handleDeleteSalary(s.id)} className="p-2 text-rose-300 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all" title="Xóa">
+                                              <IconTrash className="w-4 h-4" />
+                                          </button>
                                       </div>
                                   </td>
                               </tr>
-                          )}
+                          ))}
                       </tbody>
-                      {filteredSalaries.length > 0 && (
-                          <tfoot className="bg-slate-50 border-t-2 border-slate-200 sticky bottom-0 z-10">
-                              <tr className="font-black text-slate-800 text-[12px]">
-                                  <td colSpan={11} className="p-5 text-right uppercase tracking-widest text-slate-400">Tổng hạch toán kỳ này:</td>
-                                  <td className="p-5 text-right text-[#2c4aa0] bg-blue-50/50 text-sm">{formatCurrency(totalSalaryInView)}</td>
-                                  <td className="p-5 text-right text-amber-600 bg-amber-50/50 text-sm">{formatCurrency(totalHandlingInView)}</td>
-                                  <td className="bg-slate-900 text-white text-center text-[10px] p-5">HP ERP</td>
-                              </tr>
-                          </tfoot>
-                      )}
                   </table>
               </div>
           </Card>
 
-          {/* Import Modal with Preview Feature */}
+          {/* Import Modal */}
           {showSalaryImport && (
               <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in overflow-y-auto">
                   <Card className={`w-full p-8 space-y-6 shadow-2xl scale-in border-none overflow-hidden relative transition-all duration-500 ${isImportPreviewing ? 'max-w-6xl' : 'max-w-2xl'}`}>
@@ -1386,8 +1422,8 @@ export default function App() {
                               <IconCloudArrowUp className="w-6 h-6 text-[#2c4aa0]"/> 
                               {isImportPreviewing ? 'Xem trước dữ liệu Import' : 'Import Lương chuyến'}
                           </h3>
-                          <button onClick={() => { setShowSalaryImport(false); setIsImportPreviewing(false); setPreviewSalaryRecords([]); }} className="p-2 hover:bg-rose-50 rounded-full transition-colors group">
-                              <IconXCircle className="w-6 h-6 text-slate-300 group-hover:text-rose-500"/>
+                          <button onClick={() => { setShowSalaryImport(false); setIsImportPreviewing(false); setPreviewSalaryRecords([]); }} className="p-2 hover:bg-rose-50 rounded-full transition-colors">
+                              <IconXCircle className="w-6 h-6 text-slate-300"/>
                           </button>
                       </div>
 
@@ -1396,25 +1432,18 @@ export default function App() {
                             <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100 flex gap-4">
                                 <IconAlert className="w-10 h-10 text-[#2c4aa0] shrink-0" />
                                 <div className="text-[11px] text-blue-700 leading-relaxed font-bold">
-                                    Hệ thống hỗ trợ copy dữ liệu trực tiếp từ Google Sheets. 
-                                    <br/><span className="text-[#2c4aa0] underline uppercase">Yêu cầu 13 cột chuẩn:</span> 
-                                    <ol className="list-decimal ml-4 mt-2 grid grid-cols-2 gap-x-4">
-                                        <li>Ngày VC</li><li>Tài xế</li><li>Loại hàng</li><li>Kho đóng nhập</li>
-                                        <li>Địa điểm đóng</li><li>Depot lấy</li><li>Hạ cont/Trả rỗng</li><li>Số Cont/DO</li>
-                                        <li>SL Pallet/Tấn</li><li>Số lượng 20</li><li>Số lượng 40</li><li>Lương chuyến</li>
-                                        <li>Tiền làm hàng</li>
-                                    </ol>
+                                    Copy 13 cột chuẩn từ Google Sheets: <br/> Ngày VC, Tài xế, Loại hàng, Kho, Địa điểm, Depot lấy, Hạ/Trả, Số Cont, Tấn/Pallet, C20, C40, Lương, Làm hàng.
                                 </div>
                             </div>
                             <textarea 
                                 value={importText}
                                 onChange={e => setImportText(e.target.value)}
-                                placeholder="Dán nội dung 13 cột (Tab-separated) từ Google Sheets tại đây..."
+                                placeholder="Dán nội dung..."
                                 className="w-full h-48 p-5 border border-slate-200 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-mono text-[10px] bg-slate-50/50"
                             />
                             <div className="flex gap-4 pt-4">
-                                <Button variant="ghost" className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest" onClick={() => { setShowSalaryImport(false); setImportText(''); }}>Hủy bỏ</Button>
-                                <Button className="flex-[2] py-4 text-base font-black uppercase tracking-widest shadow-xl shadow-blue-200" onClick={handlePreviewSalary} disabled={!importText.trim()}>
+                                <Button variant="ghost" className="flex-1 py-4" onClick={() => { setShowSalaryImport(false); setImportText(''); }}>Hủy bỏ</Button>
+                                <Button className="flex-[2] py-4" onClick={handlePreviewSalary} disabled={!importText.trim()}>
                                     <IconEye className="w-5 h-5" /> Xem trước dữ liệu
                                 </Button>
                             </div>
@@ -1425,54 +1454,21 @@ export default function App() {
                                 <table className="w-full text-[10px] text-left border-collapse min-w-[1500px]">
                                     <thead className="bg-slate-100 font-black uppercase sticky top-0">
                                         <tr>
-                                            <th className="p-2 border">Ngày VC</th>
-                                            <th className="p-2 border">Tài xế</th>
-                                            <th className="p-2 border">Loại hàng</th>
-                                            <th className="p-2 border">Kho</th>
-                                            <th className="p-2 border">Địa điểm</th>
-                                            <th className="p-2 border">Depot Lấy</th>
-                                            <th className="p-2 border">Hạ/Trả</th>
-                                            <th className="p-2 border">Số Cont</th>
-                                            <th className="p-2 border">Pallet/Tấn</th>
-                                            <th className="p-2 border">C20</th>
-                                            <th className="p-2 border">C40</th>
-                                            <th className="p-2 border text-right">Lương</th>
-                                            <th className="p-2 border text-right">Làm hàng</th>
+                                            <th className="p-2 border">Ngày VC</th><th className="p-2 border">Tài xế</th><th className="p-2 border">Loại hàng</th><th className="p-2 border">Lương</th><th className="p-2 border">Làm hàng</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y bg-white">
                                         {previewSalaryRecords.map((r, i) => (
                                             <tr key={i} className="hover:bg-blue-50">
-                                                <td className="p-2 border">{r.transportDate}</td>
-                                                <td className="p-2 border font-bold">{r.driverName}</td>
-                                                <td className="p-2 border">{r.cargoType}</td>
-                                                <td className="p-2 border truncate max-w-[100px]">{r.pickupWarehouse}</td>
-                                                <td className="p-2 border truncate max-w-[100px]">{r.deliveryWarehouse}</td>
-                                                <td className="p-2 border italic text-slate-400">{r.depotPickup}</td>
-                                                <td className="p-2 border italic text-slate-400">{r.depotReturn}</td>
-                                                <td className="p-2 border font-mono">{r.containerNo}</td>
-                                                <td className="p-2 border text-center">{r.qtyPalletTon}</td>
-                                                <td className="p-2 border text-center font-bold">{r.qty20}</td>
-                                                <td className="p-2 border text-center font-bold">{r.qty40}</td>
-                                                <td className="p-2 border text-right font-bold text-[#2c4aa0]">{formatCurrency(r.tripSalary)}</td>
-                                                <td className="p-2 border text-right font-bold text-amber-600">{formatCurrency(r.handlingFee)}</td>
+                                                <td className="p-2 border">{r.transportDate}</td><td className="p-2 border font-bold">{r.driverName}</td><td className="p-2 border">{r.cargoType}</td><td className="p-2 border text-right font-bold text-[#2c4aa0]">{formatCurrency(r.tripSalary)}</td><td className="p-2 border text-right font-bold text-amber-600">{formatCurrency(r.handlingFee)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
-                                <div className="text-sm font-black text-slate-700 uppercase tracking-widest">
-                                    Tổng cộng: <span className="text-[#2c4aa0]">{previewSalaryRecords.length} chuyến hàng</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <Button variant="ghost" className="px-6" onClick={() => setIsImportPreviewing(false)}>
-                                        Quay lại sửa
-                                    </Button>
-                                    <Button className="px-8 shadow-lg shadow-blue-200" onClick={handleConfirmImportSalary}>
-                                        <IconCheck className="w-5 h-5" /> Xác nhận Import vào hệ thống
-                                    </Button>
-                                </div>
+                            <div className="flex justify-end gap-3">
+                                <Button variant="ghost" onClick={() => setIsImportPreviewing(false)}>Hủy</Button>
+                                <Button onClick={handleConfirmImportSalary}><IconCheck className="w-5 h-5" /> Xác nhận Import</Button>
                             </div>
                         </div>
                       )}
@@ -2091,7 +2087,7 @@ export default function App() {
                     <div className="text-3xl font-black text-slate-800">{formatCurrency(totalFuelAmount)}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold uppercase text-rose-500 mb-1 tracking-widest">Còn nợ cây xăng</div>
+                    <div className="text-[10px] font-bold uppercase text-rose-50 mb-1 tracking-widest">Còn nợ cây xăng</div>
                     <div className="text-3xl font-black text-rose-600">{formatCurrency(totalUnpaidFuel)}</div>
                   </div>
               </div>
@@ -2777,17 +2773,28 @@ export default function App() {
   if (!currentUser) return renderLogin();
 
   const DriverView = () => {
+    // Shared filtering logic helper
+    const isInDateRange = (dateStr: string) => {
+        if (!drFromDate && !drToDate) return true;
+        const target = dateStr;
+        const from = drFromDate || '0000-00-00';
+        const to = drToDate || '9999-99-99';
+        return target >= from && target <= to;
+    };
+
+    const mySalaryRecords = useMemo(() => {
+        return salaryRecords.filter(r => r.driverName === currentUser?.fullName && isInDateRange(r.transportDate));
+    }, [currentUser, salaryRecords, drFromDate, drToDate]);
+
     const driverEarnings = useMemo(() => {
-        return salaryRecords
-            .filter(r => r.driverName === currentUser?.fullName)
-            .reduce((sum, r) => sum + r.tripSalary + r.handlingFee, 0);
-    }, [currentUser, salaryRecords]);
+        return mySalaryRecords.reduce((sum, r) => sum + r.tripSalary + r.handlingFee, 0);
+    }, [mySalaryRecords]);
 
     const unsettledAdvances = useMemo(() => {
         return advanceRequests
-            .filter(r => r.driverName === currentUser?.fullName && !r.isSettled && r.status === RequestStatus.APPROVED)
+            .filter(r => r.driverName === currentUser?.fullName && !r.isSettled && r.status === RequestStatus.APPROVED && isInDateRange(r.requestDate))
             .reduce((sum, r) => sum + r.amount, 0);
-    }, [currentUser, advanceRequests]);
+    }, [currentUser, advanceRequests, drFromDate, drToDate]);
 
     const driverLicense = useMemo(() => {
         return drivers.find(d => d.fullName === currentUser?.fullName);
@@ -2798,20 +2805,16 @@ export default function App() {
     }, [currentUser, assignments]);
 
     const myFuelRequests = useMemo(() => {
-        return requests.filter(r => r.driverName === currentUser?.fullName);
-    }, [currentUser, requests]);
+        return requests.filter(r => r.driverName === currentUser?.fullName && isInDateRange(r.requestDate));
+    }, [currentUser, requests, drFromDate, drToDate]);
 
     const myExpenseRequests = useMemo(() => {
-        return expenseRecords.filter(r => r.driverName === currentUser?.fullName);
-    }, [currentUser, expenseRecords]);
+        return expenseRecords.filter(r => r.driverName === currentUser?.fullName && isInDateRange(r.expenseDate));
+    }, [currentUser, expenseRecords, drFromDate, drToDate]);
 
     const myAdvanceRequests = useMemo(() => {
-        return advanceRequests.filter(r => r.driverName === currentUser?.fullName);
-    }, [currentUser, advanceRequests]);
-
-    const mySalaryRecords = useMemo(() => {
-        return salaryRecords.filter(r => r.driverName === currentUser?.fullName);
-    }, [currentUser, salaryRecords]);
+        return advanceRequests.filter(r => r.driverName === currentUser?.fullName && isInDateRange(r.requestDate));
+    }, [currentUser, advanceRequests, drFromDate, drToDate]);
 
     return (
         <div className="max-w-xl mx-auto space-y-6 sm:space-y-8 animate-fade-in pb-20">
@@ -2837,7 +2840,7 @@ export default function App() {
                     
                     <div className="grid grid-cols-2 gap-4 mt-6">
                         <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
-                            <div className="text-[9px] font-black text-blue-200 uppercase tracking-tighter mb-1">Xe đang vận hành</div>
+                            <div className="text-[9px] font-black text-blue-200 uppercase tracking-tighter mb-1">Xe vận hành</div>
                             <div className="text-base font-black flex items-center gap-2">
                                 <IconTruck className="w-4 h-4" /> {currentDriverVehicle || 'Chưa nhận'}
                             </div>
@@ -2851,8 +2854,22 @@ export default function App() {
                     </div>
                 </div>
                 <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/5 rounded-full"></div>
-                <div className="absolute -left-10 -top-10 w-32 h-32 bg-white/5 rounded-full"></div>
             </div>
+
+            {/* Date Filter Bar */}
+            <Card className="p-3 border-none bg-white shadow-sm flex flex-col gap-3">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lọc dữ liệu theo thời gian</div>
+                <div className="flex gap-2 items-center">
+                    <input type="date" value={drFromDate} onChange={e => setDrFromDate(e.target.value)} className="flex-1 p-2 text-[10px] font-bold border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+                    <span className="text-slate-300 font-black">→</span>
+                    <input type="date" value={drToDate} onChange={e => setDrToDate(e.target.value)} className="flex-1 p-2 text-[10px] font-bold border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+                    {(drFromDate || drToDate) && (
+                        <button onClick={() => { setDrFromDate(''); setDrToDate(''); }} className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition-all">
+                            <IconXCircle className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+            </Card>
 
             {/* Navigation Tabs */}
             <div className="bg-white/80 rounded-2xl p-1.5 border shadow-sm flex sticky top-16 sm:top-20 z-20 backdrop-blur-md overflow-x-auto no-scrollbar">
@@ -2879,19 +2896,21 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-4">
                         <Card className="bg-emerald-50 border-emerald-100 py-6 text-center">
                             <IconChartBar className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                            <div className="text-[10px] font-black text-emerald-400 uppercase mb-1">Thu nhập ước tính</div>
+                            <div className="text-[10px] font-black text-emerald-400 uppercase mb-1">Thu nhập kỳ này</div>
                             <div className="text-xl font-black text-emerald-700">{formatCurrency(driverEarnings)}</div>
                         </Card>
                         <Card className="bg-indigo-50 border-indigo-100 py-6 text-center">
                             <IconTruck className="w-6 h-6 text-indigo-600 mx-auto mb-2" />
-                            <div className="text-[10px] font-black text-indigo-400 uppercase mb-1">Số chuyến đã chạy</div>
+                            <div className="text-[10px] font-black text-indigo-400 uppercase mb-1">Chuyến hàng</div>
                             <div className="text-xl font-black text-indigo-700">{mySalaryRecords.length} chuyến</div>
                         </Card>
                     </div>
 
                     <div className="space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[2px] px-2">Hoạt động gần nhất</h3>
-                        {mySalaryRecords.slice(0, 5).map(record => (
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[2px] px-2">Hoạt động trong kỳ</h3>
+                        {mySalaryRecords.length === 0 ? (
+                            <div className="text-center py-10 text-slate-300 italic text-sm">Không có hoạt động trong thời gian này.</div>
+                        ) : mySalaryRecords.slice(0, 10).map(record => (
                             <Card key={record.id} className="p-4 border-none shadow-sm flex items-center justify-between group">
                                 <div className="flex gap-4">
                                     <div className="w-10 h-10 bg-blue-50 text-[#2c4aa0] rounded-xl flex items-center justify-center shrink-0">
@@ -2900,10 +2919,17 @@ export default function App() {
                                     <div className="min-w-0">
                                         <div className="text-[10px] font-bold text-slate-400">{formatDate(record.transportDate)} - {record.cargoType}</div>
                                         <div className="font-bold text-slate-700 text-sm truncate">{record.pickupWarehouse} → {record.deliveryWarehouse}</div>
-                                        <div className="text-[9px] font-black text-[#2c4aa0] mt-1">Lương: {formatCurrency(record.tripSalary)}</div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[9px] font-black text-[#2c4aa0]">{formatCurrency(record.tripSalary)}</span>
+                                            {record.isPaid ? (
+                                                <span className="text-[8px] font-black bg-emerald-50 text-emerald-600 px-1.5 rounded uppercase">Đã trả</span>
+                                            ) : (
+                                                <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1.5 rounded uppercase">Chờ</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                <IconCheckCircle className="w-5 h-5 text-emerald-500 opacity-30 group-hover:opacity-100 transition-opacity" />
+                                <IconCheckCircle className={`w-5 h-5 transition-opacity ${record.isPaid ? 'text-emerald-500' : 'text-slate-200'}`} />
                             </Card>
                         ))}
                     </div>
@@ -2913,31 +2939,69 @@ export default function App() {
             {/* Trips View */}
             {driverTab === 'TRIPS' && (
                 <div className="space-y-4">
-                    <h2 className="text-lg font-black text-[#2c4aa0] px-2 flex items-center gap-2"><IconDocument className="w-5 h-5" /> Lịch sử vận chuyển</h2>
+                    <h2 className="text-lg font-black text-[#2c4aa0] px-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2"><IconDocument className="w-5 h-5" /> Nhật ký chuyến hàng</div>
+                    </h2>
                     {mySalaryRecords.length === 0 ? (
-                        <div className="text-center py-20 text-slate-300 italic text-sm">Chưa có dữ liệu chuyến hàng.</div>
-                    ) : mySalaryRecords.sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime()).map(record => (
-                        <Card key={record.id} className="border-l-4 border-[#2c4aa0] p-4">
-                            <div className="flex justify-between items-start mb-3">
-                                <div className="text-[10px] font-bold bg-blue-50 text-[#2c4aa0] px-2 py-0.5 rounded-full">{record.transportDate}</div>
-                                <div className="text-sm font-black text-emerald-600">{formatCurrency(record.tripSalary + record.handlingFee)}</div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#2c4aa0]"></div>
-                                    <div className="text-xs text-slate-600"><span className="font-bold">Từ:</span> {record.pickupWarehouse}</div>
+                        <div className="text-center py-20 text-slate-300 italic text-sm">Chưa có dữ liệu chuyến hàng trong kỳ này.</div>
+                    ) : mySalaryRecords.sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime()).map(record => {
+                        const isContainer = record.cargoType?.toLowerCase().includes('cont20') || record.cargoType?.toLowerCase().includes('cont40');
+                        
+                        return (
+                            <Card key={record.id} className={`border-l-4 p-4 ${record.isPaid ? 'border-emerald-500' : 'border-[#2c4aa0]'}`}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-[10px] font-bold bg-blue-50 text-[#2c4aa0] px-2 py-0.5 rounded-full inline-block w-fit">{record.transportDate}</div>
+                                        {record.isPaid ? (
+                                            <div className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1">
+                                                <IconCheckCircle className="w-3 h-3" /> Đã thanh toán {record.paymentDate ? `(${formatDate(record.paymentDate)})` : ''}
+                                            </div>
+                                        ) : (
+                                            <div className="text-[9px] font-black text-slate-400 uppercase flex items-center gap-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-pulse"></div> Chờ thanh toán
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-sm font-black text-emerald-600">{formatCurrency(record.tripSalary + record.handlingFee)}</div>
+                                        <div className="text-[8px] font-bold text-slate-400 uppercase">Lương + Làm hàng</div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                                    <div className="text-xs text-slate-600"><span className="font-bold">Đến:</span> {record.deliveryWarehouse}</div>
+                                <div className="space-y-3">
+                                    {/* Smart Itinerary Display */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hành trình vận chuyển:</div>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-slate-700">
+                                            <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.pickupWarehouse}</span>
+                                            <span className="text-slate-300">→</span>
+                                            <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.deliveryWarehouse}</span>
+                                            {isContainer && (
+                                                <>
+                                                    <span className="text-slate-300">→</span>
+                                                    <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.depotPickup || 'Depot'}</span>
+                                                    <span className="text-slate-300">→</span>
+                                                    <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.depotReturn || 'Hạ bãi'}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 pt-2 border-t border-slate-50 gap-4">
+                                        <div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Loại hàng</div>
+                                            <div className="text-xs font-black text-slate-800 uppercase">{record.cargoType}</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                {isContainer ? 'Số Container' : 'Số DO'}
+                                            </div>
+                                            <div className="text-xs font-black text-[#2c4aa0] font-mono">{record.containerNo || '-'}</div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                <div>Hàng: {record.cargoType}</div>
-                                <div>Cont: {record.containerNo}</div>
-                            </div>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 
@@ -2952,22 +3016,24 @@ export default function App() {
                                 <input type="date" value={newRequestDate} onChange={e=>setNewRequestDate(e.target.value)} className="w-full p-3 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 font-medium" />
                             </div>
                             <div className="p-4 bg-blue-50/50 rounded-2xl text-[#2c4aa0] border border-blue-100/50">
-                                <div className="text-[10px] font-bold uppercase opacity-60 mb-1">Xe đang sử dụng</div>
+                                <div className="text-[10px] font-bold uppercase opacity-60 mb-1">Phương tiện hiện tại</div>
                                 <div className="text-lg font-black flex items-center gap-2">
-                                    <IconTruck className="w-6 h-6" /> {autoAssignedVehicle || 'CHƯA PHÂN CÔNG'}
+                                    <IconTruck className="w-6 h-6" /> {currentDriverVehicle || 'CHƯA PHÂN CÔNG'}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Ghi chú (KM hoặc lý do)</label>
-                                <textarea value={newRequestNote} onChange={e=>setNewRequestNote(e.target.value)} className="w-full p-3 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm" placeholder="Nhập ghi chú nếu có..." />
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Ghi chú nghiệp vụ (Số KM hiện tại...)</label>
+                                <textarea value={newRequestNote} onChange={e=>setNewRequestNote(e.target.value)} className="w-full p-3 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm" placeholder="Nhập ghi chú cho điều hành..." />
                             </div>
-                            <Button onClick={handleDriverSubmit} className="w-full py-4 text-base shadow-xl" disabled={!autoAssignedVehicle}>Gửi yêu cầu phê duyệt</Button>
+                            <Button onClick={handleDriverSubmit} className="w-full py-4 text-base shadow-xl" disabled={!currentDriverVehicle}>Gửi yêu cầu phê duyệt</Button>
                         </div>
                     </Card>
 
                     <div className="space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Lịch sử đổ dầu gần đây</h3>
-                        {myFuelRequests.slice(0, 10).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(fuel => (
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Nhật ký nhiên liệu trong kỳ</h3>
+                        {myFuelRequests.length === 0 ? (
+                             <div className="text-center py-10 text-slate-300 italic text-sm">Không có dữ liệu nhiên liệu trong kỳ.</div>
+                        ) : myFuelRequests.sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(fuel => (
                             <Card key={fuel.id} className="p-4 border-none shadow-sm flex items-center justify-between gap-4">
                                 <div className="flex gap-3 min-w-0">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${fuel.status === RequestStatus.APPROVED ? 'bg-blue-50 text-[#2c4aa0]' : 'bg-amber-50 text-amber-600'}`}><IconGasPump className="w-5 h-5"/></div>
@@ -2990,7 +3056,7 @@ export default function App() {
             {driverTab === 'EXPENSE' && (
                 <div className="space-y-6">
                     <Card className="border-t-4 border-rose-500">
-                        <h2 className="text-lg font-black text-rose-500 mb-6 flex items-center gap-2"><IconReceipt className="w-5 h-5" /> Báo cáo chi phí nghiệp vụ</h2>
+                        <h2 className="text-lg font-black text-rose-500 mb-6 flex items-center gap-2"><IconReceipt className="w-5 h-5" /> Báo cáo chi phí</h2>
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -3010,16 +3076,18 @@ export default function App() {
                                 </select>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Diễn giải / Ghi chú</label>
-                                <textarea rows={2} value={drExpNote} onChange={e=>setDrExpNote(e.target.value)} className="w-full p-3 border rounded-xl outline-none text-[11px] sm:text-sm" placeholder="Mô tả cụ thể..." />
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Mô tả / Diễn giải</label>
+                                <textarea rows={2} value={drExpNote} onChange={e=>setDrExpNote(e.target.value)} className="w-full p-3 border rounded-xl outline-none text-[11px] sm:text-sm" placeholder="Mô tả lý do chi chi tiết..." />
                             </div>
-                            <Button onClick={handleDriverSubmitExpense} className="w-full py-4 text-sm sm:text-base bg-rose-600 hover:bg-rose-700 shadow-xl shadow-rose-100">Gửi báo cáo chi</Button>
+                            <Button onClick={handleDriverSubmitExpense} className="w-full py-4 text-sm sm:text-base bg-rose-600 hover:bg-rose-700 shadow-xl shadow-rose-100">Gửi báo cáo chi phí</Button>
                         </div>
                     </Card>
 
                     <div className="space-y-3">
-                        <h3 className="text-[10px] font-bold text-slate-500 uppercase px-2 tracking-widest">Lịch sử chi gần đây</h3>
-                        {myExpenseRequests.slice(0, 10).sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()).map(exp => (
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase px-2 tracking-widest">Lịch sử chi phí trong kỳ</h3>
+                        {myExpenseRequests.length === 0 ? (
+                            <div className="text-center py-10 text-slate-300 italic text-sm">Chưa có chi phí nào trong kỳ.</div>
+                        ) : myExpenseRequests.sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()).map(exp => (
                             <Card key={exp.id} className="p-3 sm:p-4 border-none shadow-sm flex items-center justify-between gap-4">
                                 <div className="flex gap-3 min-w-0">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${exp.status === RequestStatus.APPROVED ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}><IconReceipt className="w-5 h-5"/></div>
@@ -3053,40 +3121,42 @@ export default function App() {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lý do tạm ứng</label>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lý do chính</label>
                                 <select value={drAdvType} onChange={e=>setDrAdvType(e.target.value)} className="w-full p-3 border rounded-xl outline-none bg-white text-[11px] sm:text-sm">
                                     <option value="">-- Chọn lý do --</option>
                                     {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Chi tiết lý do</label>
-                                <textarea rows={2} value={drAdvNote} onChange={e=>setDrAdvNote(e.target.value)} className="w-full p-3 border rounded-xl outline-none text-[11px] sm:text-sm" placeholder="Ví dụ: Tạm ứng ăn uống chuyến đi dài..." />
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Giải trình chi tiết</label>
+                                <textarea rows={2} value={drAdvNote} onChange={e=>setDrAdvNote(e.target.value)} className="w-full p-3 border rounded-xl outline-none text-[11px] sm:text-sm" placeholder="Mô tả lý do cần tạm ứng..." />
                             </div>
                             <Button onClick={handleDriverSubmitAdvance} className="w-full py-4 text-sm sm:text-base bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-100">Gửi yêu cầu tạm ứng</Button>
                         </div>
                     </Card>
 
                     <div className="space-y-3">
-                        <h3 className="text-[10px] font-bold text-slate-500 uppercase px-2 tracking-widest">Lịch sử tạm ứng</h3>
-                        {myAdvanceRequests.slice(0, 10).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(adv => (
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase px-2 tracking-widest">Lịch sử tạm ứng trong kỳ</h3>
+                        {myAdvanceRequests.length === 0 ? (
+                             <div className="text-center py-10 text-slate-300 italic text-sm">Không có dữ liệu tạm ứng trong kỳ.</div>
+                        ) : myAdvanceRequests.sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(adv => (
                             <Card key={adv.id} className="p-3 sm:p-4 border-none shadow-sm flex items-center justify-between gap-4">
                                 <div className="flex gap-3 min-w-0">
                                     <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0"><IconWallet className="w-5 h-5"/></div>
                                     <div className="min-w-0">
-                                        <div className="text-[9px] font-bold text-slate-400 truncate">{formatDate(adv.requestDate)} - {advanceTypes.find(t => t.id === adv.typeId)?.name}</div>
+                                        <div className="text-[9px] font-bold text-slate-400">{formatDate(adv.requestDate)} - {advanceTypes.find(t => t.id === adv.typeId)?.name}</div>
                                         <div className="font-black text-slate-700 text-sm">{formatCurrency(adv.amount)}</div>
-                                        <div className="flex gap-2 mt-1">
+                                        <div className="flex flex-wrap gap-2 mt-1">
                                             <Badge status={adv.status}/>
                                             {adv.status === RequestStatus.APPROVED && (
                                                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${adv.isSettled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                    {adv.isSettled ? 'Đã hoàn' : 'Chưa hoàn'}
+                                                    {adv.isSettled ? 'Đã hoàn ứng' : 'Chưa hoàn ứng'}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right flex flex-col items-end gap-1">
                                     <IconCopy className="w-4 h-4 text-slate-200 cursor-pointer hover:text-blue-500" title="Sao chép" />
                                 </div>
                             </Card>

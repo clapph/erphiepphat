@@ -118,6 +118,8 @@ export interface SalaryRecord {
   qty40: number; // SL CONT40
   tripSalary: number; // LƯƠNG CHUYẾN
   handlingFee: number; // TIỀN LÀM HÀNG
+  isPaid?: boolean; // Đã thanh toán lương chưa
+  paymentDate?: string; // Ngày thanh toán lương
 }
 
 export interface User {
