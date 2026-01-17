@@ -1069,7 +1069,7 @@ export default function App() {
                           type="date" 
                           value={salaryEndDate} 
                           onChange={e => setSalaryEndDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" 
                       />
                   </div>
                   {(salaryStartDate || salaryEndDate || salaryDriverFilter || salaryCargoFilter) && (
@@ -1995,6 +1995,34 @@ export default function App() {
 
     const totalTrips = cargoData.reduce((sum, s) => sum + s.count, 0);
 
+    const renderVolume = (c: any) => {
+      const typeLower = c.type.toLowerCase();
+      
+      // Mappings based on type name
+      if (typeLower.includes('cont20') || typeLower.includes('cont 20')) {
+        return <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 font-bold">{c.c20} x20'</span>;
+      }
+      if (typeLower.includes('cont40') || typeLower.includes('cont 40')) {
+        return <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded border border-indigo-100 font-bold">{c.c40} x40'</span>;
+      }
+      if (typeLower.includes('miểng chai')) {
+        return <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-100 font-bold">{c.pallet} tấn</span>;
+      }
+      if (typeLower.includes('pallet') || typeLower.includes('chuyển kho')) {
+        return <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 font-bold">{c.pallet} pallet</span>;
+      }
+      
+      // Fallback
+      return (
+        <div className="flex flex-wrap gap-1 justify-center">
+          {c.pallet > 0 && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-100 font-bold">{c.pallet} p/t</span>}
+          {c.c20 > 0 && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 font-bold">{c.c20} c20</span>}
+          {c.c40 > 0 && <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded border border-indigo-100 font-bold">{c.c40} c40</span>}
+          {c.pallet === 0 && c.c20 === 0 && c.c40 === 0 && <span className="text-slate-300 italic">-</span>}
+        </div>
+      );
+    };
+
     return (
       <div className="space-y-8 animate-fade-in">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -2084,13 +2112,8 @@ export default function App() {
                       <td className="p-4 text-center">
                         <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full font-black">{c.count}</span>
                       </td>
-                      <td className="p-4">
-                        <div className="flex flex-wrap gap-1 justify-center">
-                          {c.pallet > 0 && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-100 font-bold">{c.pallet} p/t</span>}
-                          {c.c20 > 0 && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 font-bold">{c.c20} c20</span>}
-                          {c.c40 > 0 && <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded border border-indigo-100 font-bold">{c.c40} c40</span>}
-                          {c.pallet === 0 && c.c20 === 0 && c.c40 === 0 && <span className="text-slate-300 italic">-</span>}
-                        </div>
+                      <td className="p-4 text-center">
+                        {renderVolume(c)}
                       </td>
                       <td className="p-4 text-right">
                         <div className="font-black text-[#2c4aa0]">{formatCurrency(c.salary + c.handling)}</div>
