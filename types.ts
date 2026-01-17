@@ -1,3 +1,4 @@
+
 export enum RequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -49,6 +50,24 @@ export interface AdvanceRequest {
   approvalDate?: string;
   isSettled?: boolean; // Trạng thái hoàn ứng
   settlementDate?: string; // Ngày hoàn ứng
+}
+
+// Mới: Hạng mục chi phí
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+}
+
+// Mới: Bản ghi Tài xế chi
+export interface ExpenseRecord {
+  id: string;
+  driverName: string;
+  expenseDate: string; // Ngày chi
+  amount: number; // Số tiền
+  categoryId: string; // Hạng mục chi
+  description: string; // Diễn giải
+  status: RequestStatus;
+  approvalDate?: string;
 }
 
 export interface DriverAssignment {
@@ -110,4 +129,4 @@ export interface User {
 }
 
 export type UserRole = 'DRIVER' | 'ADMIN';
-export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'SALARY' | 'ADVANCE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'REPORTS_SALARY' | 'USERS' | 'FUEL_SETTINGS';
+export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'APPROVE_EXPENSE' | 'SALARY' | 'ADVANCE_SETTINGS' | 'EXPENSE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'REPORTS_SALARY' | 'USERS' | 'FUEL_SETTINGS';
