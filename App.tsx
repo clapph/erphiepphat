@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FuelRequest, 
@@ -35,7 +36,8 @@ import {
   IconCheck, 
   IconWallet, 
   IconCurrency,
-  IconSparkles
+  IconSparkles,
+  IconFunnel
 } from './components/Icons';
 // Import the AI analysis service
 import { analyzeFuelData } from './services/geminiService';
@@ -62,6 +64,13 @@ const IconCloudArrowUp = ({ className }: { className?: string }) => (
 const IconArrowDownTray = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12l4.5 4.5m0 0l4.5-4.5M12 3v13.5" />
+  </svg>
+);
+
+const IconEye = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.43 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
   </svg>
 );
 
@@ -155,22 +164,6 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     qty40: 0,
     tripSalary: 850000,
     handlingFee: 100000
-  },
-  {
-    id: 's3',
-    transportDate: '2023-10-26',
-    driverName: 'Trần Văn B',
-    cargoType: 'Hàng Pallet',
-    pickupWarehouse: 'Kho ICD',
-    deliveryWarehouse: 'KCN Sóng Thần',
-    depotPickup: 'N/A',
-    depotReturn: 'N/A',
-    containerNo: 'XE51C-12345',
-    qtyPalletTon: 15,
-    qty20: 0,
-    qty40: 0,
-    tripSalary: 1200000,
-    handlingFee: 150000
   }
 ];
 
@@ -301,6 +294,10 @@ export default function App() {
   const [advanceRequests, setAdvanceRequests] = useState<AdvanceRequest[]>(MOCK_ADVANCE_REQUESTS);
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>(MOCK_SALARY_RECORDS);
   
+  // Salary Import Preview State
+  const [previewSalaryRecords, setPreviewSalaryRecords] = useState<SalaryRecord[]>([]);
+  const [isImportPreviewing, setIsImportPreviewing] = useState(false);
+
   // UI State
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -360,6 +357,8 @@ export default function App() {
   const [reportEndDate, setReportEndDate] = useState('');
   const [reportPaymentStatus, setReportPaymentStatus] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
   const [reportAdvanceStatus, setReportAdvanceStatus] = useState<'ALL' | 'SETTLED' | 'UNSETTLED'>('ALL');
+  const [reportSalaryDriver, setReportSalaryDriver] = useState('');
+  const [reportSalaryCargo, setReportSalaryCargo] = useState('');
 
   // AI Analysis State
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
@@ -391,7 +390,7 @@ export default function App() {
       const cargoMatch = !salaryCargoFilter || cargoText.toLowerCase().includes(salaryCargoFilter.toLowerCase().trim());
       
       return driverMatch && cargoMatch && dateMatch;
-    }).sort((a, b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime());
+    }).sort((a, b) => new Date(a.transportDate).getTime() - new Date(b.transportDate).getTime());
   }, [salaryRecords, salaryStartDate, salaryEndDate, salaryDriverFilter, salaryCargoFilter]);
 
   const clearSalaryFilters = () => {
@@ -434,13 +433,13 @@ export default function App() {
   };
 
   // --- Trip Salary Actions ---
-  const handleImportSalary = () => {
+  const handlePreviewSalary = () => {
     if (!importText.trim()) return;
     const lines = importText.trim().split('\n');
     const newRecords: SalaryRecord[] = [];
     
     // Attempting to parse 13 Tab-Separated Values (copy-paste from Google Sheets)
-    // Structure: 0:NGÀY VC | 1:TÀI XẾ | 2:LOẠI HÀNG | 3:KHO | 4:ĐỊA ĐIỂM | 5:DEPOT LẤY | 6:HẠ/TRẢ | 7:SỐ CONT | 8:SL PALLET | 9:C20 | 10:C40 | 11:LƯƠNG CHUYẾN | 12:TIỀN LÀM HÀNG
+    // Structure: 0:NGÀY VC | 1:TÀI XẾ | 2:LOẠI HÀNG | 3:KHO | 4:ĐỊA ĐIỂM | 5:DEPOT LẤY | 6:HẠ/TRẢ | 7:SỐ CONT | 8:SL PALLET | 9:C20 | 10:C40 | 11:LƯƠNG | 12:LÀM HÀNG
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 13) {
@@ -464,13 +463,21 @@ export default function App() {
     });
 
     if (newRecords.length > 0) {
-      setSalaryRecords([...newRecords, ...salaryRecords]);
-      setImportText('');
-      setShowSalaryImport(false);
-      alert(`Đã import thành công ${newRecords.length} chuyến hàng.`);
+      setPreviewSalaryRecords(newRecords);
+      setIsImportPreviewing(true);
     } else {
-      alert("Định dạng dữ liệu không hợp lệ. Vui lòng kiểm tra lại copy từ Google Sheets (Yêu cầu 13 cột).");
+      alert("Định dạng dữ liệu không hợp lệ. Vui lòng kiểm tra lại copy từ Google Sheets (Yêu cầu ít nhất 13 cột tab-separated).");
     }
+  };
+
+  const handleConfirmImportSalary = () => {
+    if (previewSalaryRecords.length === 0) return;
+    setSalaryRecords([...previewSalaryRecords, ...salaryRecords]);
+    setImportText('');
+    setPreviewSalaryRecords([]);
+    setIsImportPreviewing(false);
+    setShowSalaryImport(false);
+    alert(`Đã import thành công ${previewSalaryRecords.length} chuyến hàng.`);
   };
 
   const handleDeleteSalary = (id: string) => {
@@ -1053,7 +1060,7 @@ export default function App() {
                           type="date" 
                           value={salaryStartDate} 
                           onChange={e => setSalaryStartDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" 
                       />
                   </div>
                   <div className="w-40">
@@ -1062,7 +1069,7 @@ export default function App() {
                           type="date" 
                           value={salaryEndDate} 
                           onChange={e => setSalaryEndDate(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" 
                       />
                   </div>
                   {(salaryStartDate || salaryEndDate || salaryDriverFilter || salaryCargoFilter) && (
@@ -1073,24 +1080,25 @@ export default function App() {
               </div>
           </Card>
 
-          {/* Main Table Content */}
+          {/* Main Table Content - Full 13 Columns */}
           <Card className="p-0 overflow-hidden border-none shadow-xl">
               <div className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-slate-200">
-                  <table className="w-full text-left text-[11px] border-collapse min-w-[1500px]">
+                  <table className="w-full text-left text-[11px] border-collapse min-w-[1800px]">
                       <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-tighter sticky top-0 z-10">
                           <tr>
-                              <th className="p-4 border-r border-white/10">NGÀY VC</th>
-                              <th className="p-4 border-r border-white/10">TÀI XẾ</th>
-                              <th className="p-4 border-r border-white/10">LOẠI HÀNG</th>
-                              <th className="p-4 border-r border-white/10">KHO ĐÓNG NHẬP</th>
-                              <th className="p-4 border-r border-white/10">ĐỊA ĐIỂM ĐÓNG NHẬP</th>
-                              <th className="p-4 border-r border-white/10">DEPOT LẤY</th>
-                              <th className="p-4 border-r border-white/10">TRẢ CONT/RỖNG</th>
-                              <th className="p-4 border-r border-white/10">SỐ CONT/DO</th>
-                              <th className="p-4 text-center border-r border-white/10">20'</th>
-                              <th className="p-4 text-center border-r border-white/10">40'</th>
-                              <th className="p-4 text-right border-r border-white/10">LƯƠNG CHUYẾN</th>
-                              <th className="p-4 text-right border-r border-white/10">TIỀN LÀM HÀNG</th>
+                              <th className="p-4 border-r border-white/10">1. NGÀY VC</th>
+                              <th className="p-4 border-r border-white/10">2. TÀI XẾ</th>
+                              <th className="p-4 border-r border-white/10">3. LOẠI HÀNG</th>
+                              <th className="p-4 border-r border-white/10">4. KHO ĐÓNG NHẬP</th>
+                              <th className="p-4 border-r border-white/10">5. ĐỊA ĐIỂM ĐÓNG NHẬP</th>
+                              <th className="p-4 border-r border-white/10">6. DEPOT LẤY RỖNG/FULL</th>
+                              <th className="p-4 border-r border-white/10">7. HẠ CONT/TRẢ RỖNG</th>
+                              <th className="p-4 border-r border-white/10">8. SỐ CONT/DO</th>
+                              <th className="p-4 text-center border-r border-white/10">9. SL PALLET/TẤN</th>
+                              <th className="p-4 text-center border-r border-white/10">10. SL CONT20</th>
+                              <th className="p-4 text-center border-r border-white/10">11. SL CONT40</th>
+                              <th className="p-4 text-right border-r border-white/10">12. LƯƠNG CHUYẾN</th>
+                              <th className="p-4 text-right border-r border-white/10">13. TIỀN LÀM HÀNG</th>
                               <th className="p-4 text-center">TÁC VỤ</th>
                           </tr>
                       </thead>
@@ -1109,12 +1117,9 @@ export default function App() {
                                   <td className="p-4 text-slate-400 italic">{s.depotPickup || '-'}</td>
                                   <td className="p-4 text-slate-400 italic">{s.depotReturn || '-'}</td>
                                   <td className="p-4 font-mono font-bold text-gray-700">{s.containerNo}</td>
-                                  <td className="p-4 text-center">
-                                      {s.qty20 > 0 ? <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-lg font-black">{s.qty20}</span> : '-'}
-                                  </td>
-                                  <td className="p-4 text-center">
-                                      {s.qty40 > 0 ? <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-lg font-black">{s.qty40}</span> : '-'}
-                                  </td>
+                                  <td className="p-4 text-center font-bold text-slate-500">{s.qtyPalletTon || 0}</td>
+                                  <td className="p-4 text-center font-black text-slate-700">{s.qty20 || 0}</td>
+                                  <td className="p-4 text-center font-black text-slate-700">{s.qty40 || 0}</td>
                                   <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(s.tripSalary)}</td>
                                   <td className="p-4 text-right font-black text-amber-600">{formatCurrency(s.handlingFee)}</td>
                                   <td className="p-4 text-center">
@@ -1129,7 +1134,7 @@ export default function App() {
                           ))}
                           {filteredSalaries.length === 0 && (
                               <tr>
-                                  <td colSpan={13} className="p-16 text-center">
+                                  <td colSpan={14} className="p-16 text-center">
                                       <div className="flex flex-col items-center gap-3 opacity-30">
                                           <IconDocument className="w-12 h-12" />
                                           <p className="font-bold uppercase tracking-widest text-sm italic">Không tìm thấy dữ liệu lương chuyến</p>
@@ -1141,10 +1146,10 @@ export default function App() {
                       {filteredSalaries.length > 0 && (
                           <tfoot className="bg-slate-50 border-t-2 border-slate-200 sticky bottom-0 z-10">
                               <tr className="font-black text-slate-800 text-[12px]">
-                                  <td colSpan={10} className="p-5 text-right uppercase tracking-widest text-slate-400">Tổng hạch toán kỳ này:</td>
+                                  <td colSpan={11} className="p-5 text-right uppercase tracking-widest text-slate-400">Tổng hạch toán kỳ này:</td>
                                   <td className="p-5 text-right text-[#2c4aa0] bg-blue-50/50 text-sm">{formatCurrency(totalSalaryInView)}</td>
                                   <td className="p-5 text-right text-amber-600 bg-amber-50/50 text-sm">{formatCurrency(totalHandlingInView)}</td>
-                                  <td className="bg-slate-900 text-white text-center text-[10px] p-5">HIEPPHAT ERP</td>
+                                  <td className="bg-slate-900 text-white text-center text-[10px] p-5">HP ERP</td>
                               </tr>
                           </tfoot>
                       )}
@@ -1152,40 +1157,106 @@ export default function App() {
               </div>
           </Card>
 
-          {/* Import Modal */}
+          {/* Import Modal with Preview Feature */}
           {showSalaryImport && (
-              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-                  <Card className="max-w-2xl w-full p-8 space-y-6 shadow-2xl scale-in border-none overflow-hidden relative">
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in overflow-y-auto">
+                  <Card className={`w-full p-8 space-y-6 shadow-2xl scale-in border-none overflow-hidden relative transition-all duration-500 ${isImportPreviewing ? 'max-w-6xl' : 'max-w-2xl'}`}>
                       <div className="absolute top-0 left-0 w-full h-1.5 bg-[#2c4aa0]"></div>
                       <div className="flex justify-between items-center border-b border-gray-100 pb-4">
                           <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                              <IconCloudArrowUp className="w-6 h-6 text-[#2c4aa0]"/> Import Lương chuyến
+                              <IconCloudArrowUp className="w-6 h-6 text-[#2c4aa0]"/> 
+                              {isImportPreviewing ? 'Xem trước dữ liệu Import' : 'Import Lương chuyến'}
                           </h3>
-                          <button onClick={() => setShowSalaryImport(false)} className="p-2 hover:bg-rose-50 rounded-full transition-colors group">
+                          <button onClick={() => { setShowSalaryImport(false); setIsImportPreviewing(false); setPreviewSalaryRecords([]); }} className="p-2 hover:bg-rose-50 rounded-full transition-colors group">
                               <IconXCircle className="w-6 h-6 text-slate-300 group-hover:text-rose-500"/>
                           </button>
                       </div>
-                      <div className="space-y-4">
-                          <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100 flex gap-4">
-                              <IconAlert className="w-10 h-10 text-[#2c4aa0] shrink-0" />
-                              <div className="text-[11px] text-blue-700 leading-relaxed font-bold">
-                                  Hệ thống hỗ trợ copy dữ liệu trực tiếp từ Google Sheets. 
-                                  <br/><span className="text-[#2c4aa0] underline">Yêu cầu 13 cột:</span> NGÀY VC | TÀI XẾ | LOẠI HÀNG | KHO | ĐỊA ĐIỂM | DEPOT LẤY | HẠ/TRẢ | SỐ CONT | SL PALLET | C20 | C40 | LƯƠNG | LÀM HÀNG.
-                              </div>
-                          </div>
-                          <textarea 
-                              value={importText}
-                              onChange={e => setImportText(e.target.value)}
-                              placeholder="Dán nội dung 13 cột (Tab-separated) từ Google Sheets tại đây..."
-                              className="w-full h-48 p-5 border border-slate-200 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-mono text-[10px] bg-slate-50/50"
-                          />
-                      </div>
-                      <div className="flex gap-4 pt-4">
-                          <Button variant="ghost" className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest" onClick={() => { setShowSalaryImport(false); setImportText(''); }}>Hủy bỏ</Button>
-                          <Button className="flex-[2] py-4 text-base font-black uppercase tracking-widest shadow-xl shadow-blue-200" onClick={handleImportSalary}>
-                              Xác nhận Import {importText ? `(${importText.split('\n').length} dòng)` : ''}
-                          </Button>
-                      </div>
+
+                      {!isImportPreviewing ? (
+                        <div className="space-y-4">
+                            <div className="p-5 bg-blue-50 rounded-2xl border border-blue-100 flex gap-4">
+                                <IconAlert className="w-10 h-10 text-[#2c4aa0] shrink-0" />
+                                <div className="text-[11px] text-blue-700 leading-relaxed font-bold">
+                                    Hệ thống hỗ trợ copy dữ liệu trực tiếp từ Google Sheets. 
+                                    <br/><span className="text-[#2c4aa0] underline uppercase">Yêu cầu 13 cột chuẩn:</span> 
+                                    <ol className="list-decimal ml-4 mt-2 grid grid-cols-2 gap-x-4">
+                                        <li>Ngày VC</li><li>Tài xế</li><li>Loại hàng</li><li>Kho đóng nhập</li>
+                                        <li>Địa điểm đóng</li><li>Depot lấy</li><li>Hạ cont/Trả rỗng</li><li>Số Cont/DO</li>
+                                        <li>SL Pallet/Tấn</li><li>Số lượng 20</li><li>Số lượng 40</li><li>Lương chuyến</li>
+                                        <li>Tiền làm hàng</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            <textarea 
+                                value={importText}
+                                onChange={e => setImportText(e.target.value)}
+                                placeholder="Dán nội dung 13 cột (Tab-separated) từ Google Sheets tại đây..."
+                                className="w-full h-48 p-5 border border-slate-200 rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 font-mono text-[10px] bg-slate-50/50"
+                            />
+                            <div className="flex gap-4 pt-4">
+                                <Button variant="ghost" className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest" onClick={() => { setShowSalaryImport(false); setImportText(''); }}>Hủy bỏ</Button>
+                                <Button className="flex-[2] py-4 text-base font-black uppercase tracking-widest shadow-xl shadow-blue-200" onClick={handlePreviewSalary} disabled={!importText.trim()}>
+                                    <IconEye className="w-5 h-5" /> Xem trước dữ liệu
+                                </Button>
+                            </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                            <div className="overflow-x-auto max-h-[400px] border rounded-2xl">
+                                <table className="w-full text-[10px] text-left border-collapse min-w-[1500px]">
+                                    <thead className="bg-slate-100 font-black uppercase sticky top-0">
+                                        <tr>
+                                            <th className="p-2 border">Ngày VC</th>
+                                            <th className="p-2 border">Tài xế</th>
+                                            <th className="p-2 border">Loại hàng</th>
+                                            <th className="p-2 border">Kho</th>
+                                            <th className="p-2 border">Địa điểm</th>
+                                            <th className="p-2 border">Depot Lấy</th>
+                                            <th className="p-2 border">Hạ/Trả</th>
+                                            <th className="p-2 border">Số Cont</th>
+                                            <th className="p-2 border">Pallet/Tấn</th>
+                                            <th className="p-2 border">C20</th>
+                                            <th className="p-2 border">C40</th>
+                                            <th className="p-2 border text-right">Lương</th>
+                                            <th className="p-2 border text-right">Làm hàng</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y bg-white">
+                                        {previewSalaryRecords.map((r, i) => (
+                                            <tr key={i} className="hover:bg-blue-50">
+                                                <td className="p-2 border">{r.transportDate}</td>
+                                                <td className="p-2 border font-bold">{r.driverName}</td>
+                                                <td className="p-2 border">{r.cargoType}</td>
+                                                <td className="p-2 border truncate max-w-[100px]">{r.pickupWarehouse}</td>
+                                                <td className="p-2 border truncate max-w-[100px]">{r.deliveryWarehouse}</td>
+                                                <td className="p-2 border italic text-slate-400">{r.depotPickup}</td>
+                                                <td className="p-2 border italic text-slate-400">{r.depotReturn}</td>
+                                                <td className="p-2 border font-mono">{r.containerNo}</td>
+                                                <td className="p-2 border text-center">{r.qtyPalletTon}</td>
+                                                <td className="p-2 border text-center font-bold">{r.qty20}</td>
+                                                <td className="p-2 border text-center font-bold">{r.qty40}</td>
+                                                <td className="p-2 border text-right font-bold text-[#2c4aa0]">{formatCurrency(r.tripSalary)}</td>
+                                                <td className="p-2 border text-right font-bold text-amber-600">{formatCurrency(r.handlingFee)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
+                                <div className="text-sm font-black text-slate-700 uppercase tracking-widest">
+                                    Tổng cộng: <span className="text-[#2c4aa0]">{previewSalaryRecords.length} chuyến hàng</span>
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="ghost" className="px-6" onClick={() => setIsImportPreviewing(false)}>
+                                        Quay lại sửa
+                                    </Button>
+                                    <Button className="px-8 shadow-lg shadow-blue-200" onClick={handleConfirmImportSalary}>
+                                        <IconCheck className="w-5 h-5" /> Xác nhận Import vào hệ thống
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                      )}
                   </Card>
               </div>
           )}
@@ -1873,98 +1944,206 @@ export default function App() {
   const renderSalaryReports = () => {
     const start = reportStartDate || '0000-00-00';
     const end = reportEndDate || '9999-99-99';
-    const filteredRecords = salaryRecords.filter(s => s.transportDate >= start && s.transportDate <= end);
+    
+    // Applying enhanced report filters
+    const filteredRecords = salaryRecords.filter(s => {
+      const dateMatch = s.transportDate >= start && s.transportDate <= end;
+      const driverMatch = !reportSalaryDriver || s.driverName === reportSalaryDriver;
+      const cargoMatch = !reportSalaryCargo || (s.cargoType || '').toLowerCase().includes(reportSalaryCargo.toLowerCase().trim());
+      return dateMatch && driverMatch && cargoMatch;
+    });
     
     const totalSalary = filteredRecords.reduce((sum, r) => sum + r.tripSalary, 0);
     const totalHandling = filteredRecords.reduce((sum, r) => sum + r.handlingFee, 0);
-    const totalPalletTon = filteredRecords.reduce((sum, r) => sum + (r.qtyPalletTon || 0), 0);
-    const total20 = filteredRecords.reduce((sum, r) => sum + (r.qty20 || 0), 0);
-    const total40 = filteredRecords.reduce((sum, r) => sum + (r.qty40 || 0), 0);
+    const total20 = filteredRecords.reduce((sum, r) => sum + r.qty20, 0);
+    const total40 = filteredRecords.reduce((sum, r) => sum + r.qty40, 0);
 
+    // Aggregating by Cargo Type
+    const statsByCargo = filteredRecords.reduce((acc: any, curr) => {
+      const type = curr.cargoType || 'Khác';
+      if (!acc[type]) acc[type] = { count: 0, salary: 0, handling: 0, c20: 0, c40: 0, pallet: 0, trips: new Set() };
+      acc[type].salary += curr.tripSalary;
+      acc[type].handling += curr.handlingFee;
+      acc[type].c20 += curr.qty20;
+      acc[type].c40 += curr.qty40;
+      acc[type].pallet += (curr.qtyPalletTon || 0);
+      acc[type].trips.add(`${curr.driverName}|${curr.transportDate}|${curr.cargoType}`);
+      return acc;
+    }, {});
+
+    const cargoData = Object.entries(statsByCargo).map(([type, data]: any) => ({
+      type,
+      count: data.trips.size,
+      salary: data.salary,
+      handling: data.handling,
+      c20: data.c20,
+      c40: data.c40,
+      pallet: data.pallet,
+    })).sort((a, b) => (b.salary + b.handling) - (a.salary + a.handling));
+
+    // Aggregating by Driver
     const statsByDriver = drivers.map(d => {
       const records = filteredRecords.filter(r => r.driverName === d.fullName);
-      // Logic tính Chuyến: tổ hợp duy nhất của Ngày + Loại hàng của từng tài xế
       const uniqueTrips = new Set(records.map(r => `${r.transportDate}|${r.cargoType}`)).size;
-      
       return {
         name: d.fullName,
         count: uniqueTrips,
         salary: records.reduce((sum, r) => sum + r.tripSalary, 0),
         handling: records.reduce((sum, r) => sum + r.handlingFee, 0),
-        qtyPalletTon: records.reduce((sum, r) => sum + (r.qtyPalletTon || 0), 0),
-        qty20: records.reduce((sum, r) => sum + (r.qty20 || 0), 0),
-        qty40: records.reduce((sum, r) => sum + (r.qty40 || 0), 0),
       };
-    }).filter(s => s.count > 0).sort((a, b) => b.salary - a.salary);
+    }).filter(s => s.count > 0).sort((a, b) => (b.salary + b.handling) - (a.salary + a.handling));
 
-    const totalTrips = statsByDriver.reduce((sum, s) => sum + s.count, 0);
+    const totalTrips = cargoData.reduce((sum, s) => sum + s.count, 0);
 
     return (
       <div className="space-y-8 animate-fade-in">
-        <Card className="border-t-4 border-[#2c4aa0]">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconCurrency className="w-6 h-6 text-[#2c4aa0]"/> Báo cáo Sản lượng & Lương chuyến</h2>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
+              <IconCurrency className="w-8 h-8 text-[#2c4aa0]"/> Báo cáo Sản lượng & Lương chuyến
+            </h2>
+            <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Phân tích chuyên sâu về doanh thu & hiệu suất vận chuyển</p>
+          </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
-              <div className="text-[10px] font-black uppercase text-blue-400 mb-1 tracking-widest">Tổng tiền lương chuyến</div>
-              <div className="text-2xl font-black text-[#2c4aa0]">{formatCurrency(totalSalary)}</div>
+          <div className="bg-white p-4 rounded-3xl border border-slate-200 flex flex-wrap gap-4 items-end shadow-sm w-full md:w-auto">
+            <div className="flex-1 md:flex-none">
+              <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Tài xế</label>
+              <select 
+                value={reportSalaryDriver} 
+                onChange={e => setReportSalaryDriver(e.target.value)} 
+                className="w-full p-2 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">Tất cả tài xế</option>
+                {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
+              </select>
             </div>
-            <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100">
-              <div className="text-[10px] font-black uppercase text-amber-500 mb-1 tracking-widest">Tổng tiền làm hàng</div>
-              <div className="text-2xl font-black text-amber-600">{formatCurrency(totalHandling)}</div>
+            <div className="flex-1 md:flex-none">
+              <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Loại hàng</label>
+              <input 
+                value={reportSalaryCargo} 
+                onChange={e => setReportSalaryCargo(e.target.value)} 
+                placeholder="VD: Cont..." 
+                className="w-full p-2 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" 
+              />
             </div>
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-              <div className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Sản lượng Container (Kỳ này)</div>
-              <div className="text-2xl font-black text-slate-700">
-                {total20}x20' | {total40}x40'
-                <span className="text-xs font-bold block opacity-60">Tổng {total20 + total40} Cont</span>
+            <div className="flex gap-2">
+              <div className="flex flex-col">
+                <label className="text-[9px] font-black text-slate-400 uppercase mb-1">Từ</label>
+                <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="p-1.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[9px] font-black text-slate-400 uppercase mb-1">Đến</label>
+                <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="p-1.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" />
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
-                <tr>
-                  <th className="p-4">Tài xế</th>
-                  <th className="p-4 text-center">Số chuyến</th>
-                  <th className="p-4 text-center">Pallet / Tấn</th>
-                  <th className="p-4 text-center">Cont 20'</th>
-                  <th className="p-4 text-center">Cont 40'</th>
-                  <th className="p-4 text-right">Tổng lương</th>
-                  <th className="p-4 text-right">Tổng làm hàng</th>
-                  <th className="p-4 text-right bg-slate-100 text-slate-800">Cộng tổng</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {statsByDriver.map(s => (
-                  <tr key={s.name} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 font-black text-slate-700">{s.name}</td>
-                    <td className="p-4 text-center font-bold text-slate-400">{s.count}</td>
-                    <td className="p-4 text-center font-bold text-slate-500">{s.qtyPalletTon || '-'}</td>
-                    <td className="p-4 text-center font-bold text-blue-600">{s.qty20 || '-'}</td>
-                    <td className="p-4 text-center font-bold text-blue-600">{s.qty40 || '-'}</td>
-                    <td className="p-4 text-right font-bold text-[#2c4aa0]">{formatCurrency(s.salary)}</td>
-                    <td className="p-4 text-right font-bold text-amber-600">{formatCurrency(s.handling)}</td>
-                    <td className="p-4 text-right font-black bg-slate-50/50 text-slate-800">{formatCurrency(s.salary + s.handling)}</td>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="border-l-4 border-[#2c4aa0] bg-blue-50/20">
+            <p className="text-[10px] font-black uppercase text-blue-400 mb-1 tracking-widest">Lương chuyến</p>
+            <div className="text-xl font-black text-[#2c4aa0]">{formatCurrency(totalSalary)}</div>
+          </Card>
+          <Card className="border-l-4 border-amber-400 bg-amber-50/20">
+            <p className="text-[10px] font-black uppercase text-amber-500 mb-1 tracking-widest">Tiền làm hàng</p>
+            <div className="text-xl font-black text-amber-600">{formatCurrency(totalHandling)}</div>
+          </Card>
+          <Card className="border-l-4 border-indigo-500 bg-indigo-50/20">
+            <p className="text-[10px] font-black uppercase text-indigo-400 mb-1 tracking-widest">Sản lượng Cont</p>
+            <div className="text-xl font-black text-indigo-700">{total20}x20' | {total40}x40'</div>
+          </Card>
+          <Card className="border-l-4 border-emerald-500 bg-emerald-50/20">
+            <p className="text-[10px] font-black uppercase text-emerald-500 mb-1 tracking-widest">Tổng lượt chuyến</p>
+            <div className="text-xl font-black text-emerald-700">{totalTrips} chuyến</div>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card className="p-0 overflow-hidden border-none shadow-xl">
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                <IconFunnel className="w-4 h-4 text-amber-400"/> Sản lượng theo Loại hàng
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[11px]">
+                <thead className="bg-slate-50 text-slate-400 font-black uppercase border-b">
+                  <tr>
+                    <th className="p-4">Loại hàng</th>
+                    <th className="p-4 text-center">Số chuyến</th>
+                    <th className="p-4 text-center">Tổng Sản lượng</th>
+                    <th className="p-4 text-right">Tổng Lương</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-slate-50 border-t-2">
-                <tr className="font-black text-slate-800">
-                  <td className="p-4 uppercase tracking-widest text-[10px]">TỔNG CỘNG:</td>
-                  <td className="p-4 text-center">{totalTrips}</td>
-                  <td className="p-4 text-center">{totalPalletTon}</td>
-                  <td className="p-4 text-center text-blue-600">{total20}</td>
-                  <td className="p-4 text-center text-blue-600">{total40}</td>
-                  <td className="p-4 text-right text-[#2c4aa0]">{formatCurrency(totalSalary)}</td>
-                  <td className="p-4 text-right text-amber-600">{formatCurrency(totalHandling)}</td>
-                  <td className="p-4 text-right text-xl">{formatCurrency(totalSalary + totalHandling)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </Card>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {cargoData.map(c => (
+                    <tr key={c.type} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-4">
+                        <span className="font-black text-slate-700 uppercase">{c.type}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full font-black">{c.count}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {c.pallet > 0 && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-100 font-bold">{c.pallet} p/t</span>}
+                          {c.c20 > 0 && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 font-bold">{c.c20} c20</span>}
+                          {c.c40 > 0 && <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded border border-indigo-100 font-bold">{c.c40} c40</span>}
+                          {c.pallet === 0 && c.c20 === 0 && c.c40 === 0 && <span className="text-slate-300 italic">-</span>}
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="font-black text-[#2c4aa0]">{formatCurrency(c.salary + c.handling)}</div>
+                        <div className="text-[9px] text-slate-400 font-bold uppercase">Lương + Làm hàng</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card className="p-0 overflow-hidden border-none shadow-xl">
+            <div className="p-5 bg-[#2c4aa0] text-white flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                <IconUsers className="w-4 h-4 text-white/50"/> Sản lượng theo Tài xế
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[11px]">
+                <thead className="bg-slate-50 text-slate-400 font-black uppercase border-b">
+                  <tr>
+                    <th className="p-4">Tên Tài xế</th>
+                    <th className="p-4 text-center">Chuyến</th>
+                    <th className="p-4 text-right">Doanh thu</th>
+                    <th className="p-4 text-right">Tỉ trọng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {statsByDriver.map(s => {
+                    const rev = s.salary + s.handling;
+                    const percent = totalSalary + totalHandling > 0 ? (rev / (totalSalary + totalHandling)) * 100 : 0;
+                    return (
+                      <tr key={s.name} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4 font-black text-slate-700">{s.name}</td>
+                        <td className="p-4 text-center font-bold text-slate-500">{s.count}</td>
+                        <td className="p-4 text-right font-black text-[#2c4aa0]">{formatCurrency(rev)}</td>
+                        <td className="p-4 text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="font-bold text-emerald-600">{percent.toFixed(1)}%</span>
+                            <div className="w-16 h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                              <div className="h-full bg-emerald-500" style={{ width: `${percent}%` }}></div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
       </div>
     );
   };
@@ -2191,7 +2370,7 @@ export default function App() {
         </form>
 
         <div className="text-center pt-4">
-          <p className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">Phiên bản 2.0.4. © 2024 Hiệp Phát Logistics</p>
+          <p className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">Phiên bản 2.0. © 2024 Hiệp Phát ERP</p>
         </div>
       </Card>
     </div>
