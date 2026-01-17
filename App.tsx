@@ -389,6 +389,8 @@ export default function App() {
   const [reportAdvanceStatus, setReportAdvanceStatus] = useState<'ALL' | 'SETTLED' | 'UNSETTLED'>('ALL');
   const [reportSalaryDriver, setReportSalaryDriver] = useState('');
   const [reportSalaryCargo, setReportSalaryCargo] = useState('');
+  const [reportExpenseDriver, setReportExpenseDriver] = useState('');
+  const [reportExpenseCategory, setReportExpenseCategory] = useState('');
 
   // AI Analysis State
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
@@ -1051,8 +1053,9 @@ export default function App() {
     </div>
   );
 
-  const renderAdvanceSettings = () => (
-    <div className="space-y-6 animate-fade-in">
+  const renderExpenseSettings = () => (
+    <div className="space-y-12 animate-fade-in">
+        {/* Advance Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="lg:col-span-1 border-l-4 border-[#2c4aa0]">
                 <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -1060,8 +1063,8 @@ export default function App() {
                 </h2>
                 <form onSubmit={handleSaveAdvanceType} className="space-y-4">
                     <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên loại chi phí</label>
-                        <input name="name" placeholder="VD: Chi phí sửa xe" required defaultValue={editingAdvanceType?.name} className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-100" />
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên loại tạm ứng</label>
+                        <input name="name" placeholder="VD: Chi phí đi đường" required defaultValue={editingAdvanceType?.name} className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-100" />
                     </div>
                     <div className="flex gap-2">
                       {editingAdvanceType && <Button variant="ghost" onClick={() => setEditingAdvanceType(null)} className="flex-1">Hủy</Button>}
@@ -1072,7 +1075,7 @@ export default function App() {
 
             <Card className="lg:col-span-2">
                 <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <IconWallet className="w-6 h-6 text-[#2c4aa0]" /> Danh mục chi phí tạm ứng
+                    <IconWallet className="w-6 h-6 text-[#2c4aa0]" /> Danh mục tạm ứng
                 </h2>
                 <div className="overflow-x-auto rounded-xl border border-gray-100">
                     <table className="w-full text-left text-sm">
@@ -1094,27 +1097,21 @@ export default function App() {
                                     </td>
                                 </tr>
                             ))}
-                            {advanceTypes.length === 0 && (
-                                <tr><td colSpan={2} className="p-8 text-center text-slate-400 italic">Chưa có loại chi phí nào</td></tr>
-                            )}
                         </tbody>
                     </table>
                 </div>
             </Card>
         </div>
-    </div>
-  );
 
-  const renderExpenseSettings = () => (
-    <div className="space-y-6 animate-fade-in">
+        {/* Expense Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="lg:col-span-1 border-l-4 border-rose-500">
                 <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <IconPlus className="w-5 h-5 text-rose-500" /> {editingExpenseCategory ? 'Sửa danh mục' : 'Thêm danh mục chi'}
+                    <IconPlus className="w-5 h-5 text-rose-500" /> {editingExpenseCategory ? 'Sửa hạng mục chi' : 'Thêm hạng mục chi'}
                 </h2>
                 <form onSubmit={handleSaveExpenseCategory} className="space-y-4">
                     <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên danh mục chi</label>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Tên hạng mục chi</label>
                         <input name="name" placeholder="VD: Phí cầu đường" required defaultValue={editingExpenseCategory?.name} className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-rose-100" />
                     </div>
                     <div className="flex gap-2">
@@ -1126,7 +1123,7 @@ export default function App() {
 
             <Card className="lg:col-span-2">
                 <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <IconReceipt className="w-6 h-6 text-rose-500" /> Danh mục Tài xế chi
+                    <IconReceipt className="w-6 h-6 text-rose-500" /> Danh mục tài xế chi
                 </h2>
                 <div className="overflow-x-auto rounded-xl border border-gray-100">
                     <table className="w-full text-left text-sm">
@@ -2140,6 +2137,146 @@ export default function App() {
     );
   };
 
+  const renderExpenseReports = () => {
+    const start = reportStartDate || '0000-00-00';
+    const end = reportEndDate || '9999-99-99';
+
+    const filteredExpenses = expenseRecords.filter(e => {
+        const dateMatch = e.expenseDate >= start && e.expenseDate <= end;
+        const driverMatch = !reportExpenseDriver || e.driverName === reportExpenseDriver;
+        const categoryMatch = !reportExpenseCategory || e.categoryId === reportExpenseCategory;
+        return dateMatch && driverMatch && categoryMatch && e.status === RequestStatus.APPROVED;
+    });
+
+    const totalExpenseAmount = filteredExpenses.reduce((s, e) => s + e.amount, 0);
+
+    const statsByCategory = expenseCategories.map(cat => {
+        const catExpenses = filteredExpenses.filter(e => e.categoryId === cat.id);
+        return {
+            name: cat.name,
+            total: catExpenses.reduce((s, e) => s + e.amount, 0),
+            count: catExpenses.length
+        };
+    }).filter(s => s.total > 0).sort((a, b) => b.total - a.total);
+
+    return (
+        <div className="space-y-8 animate-fade-in">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                    <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
+                        <IconReceipt className="w-8 h-8 text-rose-500"/> Báo cáo Chi phí tài xế
+                    </h2>
+                    <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Tổng hợp và phân tích các khoản chi phí nghiệp vụ của tài xế</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-3xl border border-slate-200 flex flex-wrap gap-4 items-end shadow-sm w-full md:w-auto">
+                    <div className="flex-1 md:flex-none">
+                        <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Tài xế</label>
+                        <select 
+                            value={reportExpenseDriver} 
+                            onChange={e => setReportExpenseDriver(e.target.value)} 
+                            className="w-full p-2 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100"
+                        >
+                            <option value="">Tất cả tài xế</option>
+                            {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex-1 md:flex-none">
+                        <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Hạng mục</label>
+                        <select 
+                            value={reportExpenseCategory} 
+                            onChange={e => setReportExpenseCategory(e.target.value)} 
+                            className="w-full p-2 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100"
+                        >
+                            <option value="">Tất cả hạng mục</option>
+                            {expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="flex flex-col">
+                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1">Từ</label>
+                            <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="p-1.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" />
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-[9px] font-black text-slate-400 uppercase mb-1">Đến</label>
+                            <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="p-1.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card className="border-t-4 border-rose-500">
+                    <div className="text-[10px] font-black uppercase text-rose-400 mb-1 tracking-widest">Tổng chi phí toàn kỳ</div>
+                    <div className="text-3xl font-black text-rose-600">{formatCurrency(totalExpenseAmount)}</div>
+                </Card>
+                <Card className="border-t-4 border-slate-500">
+                    <div className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Số khoản chi được duyệt</div>
+                    <div className="text-3xl font-black text-slate-800">{filteredExpenses.length} <span className="text-sm font-normal text-slate-400">khoản chi</span></div>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <Card className="lg:col-span-1 p-0 overflow-hidden shadow-xl border-none">
+                    <div className="p-5 bg-rose-500 text-white flex items-center justify-between">
+                        <h3 className="text-xs font-black uppercase tracking-widest">Cơ cấu hạng mục chi</h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        {statsByCategory.map(s => {
+                            const percent = totalExpenseAmount > 0 ? (s.total / totalExpenseAmount) * 100 : 0;
+                            return (
+                                <div key={s.name} className="space-y-1">
+                                    <div className="flex justify-between text-xs font-bold text-slate-600">
+                                        <span>{s.name}</span>
+                                        <span>{formatCurrency(s.total)}</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-full bg-rose-500 rounded-full" style={{ width: `${percent}%` }}></div>
+                                    </div>
+                                    <div className="text-[9px] text-right text-slate-400 font-bold">{percent.toFixed(1)}%</div>
+                                </div>
+                            );
+                        })}
+                        {statsByCategory.length === 0 && <div className="p-8 text-center text-slate-300 italic text-xs">Chưa có dữ liệu phân tích</div>}
+                    </div>
+                </Card>
+
+                <Card className="lg:col-span-2 p-0 overflow-hidden shadow-xl border-none">
+                    <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+                        <h3 className="text-xs font-black uppercase tracking-widest">Chi tiết các khoản chi nghiệp vụ</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[11px]">
+                            <thead className="bg-slate-50 text-slate-400 font-black uppercase border-b">
+                                <tr>
+                                    <th className="p-4">Ngày chi</th>
+                                    <th className="p-4">Tài xế</th>
+                                    <th className="p-4">Hạng mục</th>
+                                    <th className="p-4 text-right">Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 bg-white">
+                                {filteredExpenses.sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()).map(e => (
+                                    <tr key={e.id} className="hover:bg-rose-50/30 transition-colors">
+                                        <td className="p-4 text-slate-500">{formatDate(e.expenseDate)}</td>
+                                        <td className="p-4 font-black text-slate-700">{e.driverName}</td>
+                                        <td className="p-4">
+                                            <span className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded font-bold uppercase text-[9px]">
+                                                {expenseCategories.find(c => c.id === e.categoryId)?.name}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-right font-black text-rose-600">{formatCurrency(e.amount)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            </div>
+        </div>
+    );
+  };
+
   const renderSalaryReports = () => {
     const start = reportStartDate || '0000-00-00';
     const end = reportEndDate || '9999-99-99';
@@ -2502,6 +2639,10 @@ export default function App() {
               <IconGasPump className={`w-5 h-5 ${activeTab === 'REPORTS_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Báo cáo nhiên liệu</span>
             </button>
+            <button onClick={() => setActiveTab('REPORTS_EXPENSE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+              <IconReceipt className={`w-5 h-5 ${activeTab === 'REPORTS_EXPENSE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+              <span>Báo cáo chi phí tài xế</span>
+            </button>
             <button onClick={() => setActiveTab('REPORTS_ADVANCE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconWallet className={`w-5 h-5 ${activeTab === 'REPORTS_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
               <span>Báo cáo tạm ứng</span>
@@ -2517,12 +2658,8 @@ export default function App() {
               <span>Nhiên liệu</span>
             </button>
             <button onClick={() => setActiveTab('EXPENSE_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'EXPENSE_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconReceipt className={`w-5 h-5 ${activeTab === 'EXPENSE_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Danh mục chi</span>
-            </button>
-            <button onClick={() => setActiveTab('ADVANCE_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'ADVANCE_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconWallet className={`w-5 h-5 ${activeTab === 'ADVANCE_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Tạm ứng</span>
+              <IconReceipt className={`w-5 h-5 ${activeTab === 'EXPENSE_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`}  /> 
+              <span>Danh mục chi phí</span>
             </button>
             <button onClick={() => setActiveTab('USERS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'USERS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
               <IconUser className={`w-5 h-5 ${activeTab === 'USERS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
@@ -2538,7 +2675,6 @@ export default function App() {
         {activeTab === 'APPROVE_ADVANCE' && renderApproveAdvance()}
         {activeTab === 'SALARY' && renderSalaryManagement()}
         {activeTab === 'OPERATION' && renderOperationManagement()}
-        {activeTab === 'ADVANCE_SETTINGS' && renderAdvanceSettings()}
         {activeTab === 'EXPENSE_SETTINGS' && renderExpenseSettings()}
         {activeTab === 'FUEL_SETTINGS' && renderFuelSettings()}
         {activeTab === 'USERS' && renderUserManagement()}
@@ -2546,6 +2682,7 @@ export default function App() {
         {activeTab === 'REPORTS_FUEL' && renderFuelReports()}
         {activeTab === 'REPORTS_ADVANCE' && renderAdvanceReports()}
         {activeTab === 'REPORTS_SALARY' && renderSalaryReports()}
+        {activeTab === 'REPORTS_EXPENSE' && renderExpenseReports()}
       </div>
     </div>
   );
