@@ -82,6 +82,19 @@ const IconReceipt = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const IconArrowSmallRight = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 8.25 21 12m0 0-3.75 3.75M21 12H3" />
+  </svg>
+);
+
+const IconMapPin = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+  </svg>
+);
+
 // --- Constants & Mock Data ---
 const BG_COLOR = '#f5f7fa'; 
 const PRIMARY_BLUE = '#2c4aa0';
@@ -181,7 +194,7 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     deliveryWarehouse: 'Kho HP',
     depotPickup: 'Depot 6',
     depotReturn: 'Hạ bãi',
-    containerNo: '-',
+    containerNo: 'DO-12345',
     qtyPalletTon: 15,
     qty20: 0,
     qty40: 0,
@@ -407,6 +420,14 @@ export default function App() {
   const [reportSalaryCargo, setReportSalaryCargo] = useState('');
   const [reportExpenseDriver, setReportExpenseDriver] = useState('');
   const [reportExpenseCategory, setReportExpenseCategory] = useState('');
+  
+  // Fuel Report specific filters
+  const [reportFuelStation, setReportFuelStation] = useState('');
+  const [reportFuelVehicle, setReportFuelVehicle] = useState('');
+  
+  // Advance Report specific filters
+  const [reportAdvanceDriver, setReportAdvanceDriver] = useState('');
+  const [reportAdvanceType, setReportAdvanceType] = useState('');
 
   // AI Analysis State
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
@@ -414,8 +435,8 @@ export default function App() {
 
   // Derived State
   const autoAssignedVehicle = useMemo(() => {
-    return getAssignedVehicle(currentUser?.fullName || '', new Date().toISOString().split('T')[0], assignments);
-  }, [assignments, currentUser]);
+    return getAssignedVehicle(currentUser?.fullName || '', newRequestDate, assignments);
+  }, [newRequestDate, assignments, currentUser]);
 
   const adminAutoVehicle = useMemo(() => {
     if (!adminNewDriver) return null;
@@ -543,20 +564,6 @@ export default function App() {
   const handleMarkSalaryAsPaid = (id: string) => {
     if (window.confirm("Xác nhận đã thanh toán lương cho chuyến hàng này?")) {
       setSalaryRecords(prev => prev.map(s => s.id === id ? { ...s, isPaid: true, paymentDate: new Date().toISOString().split('T')[0] } : s));
-    }
-  };
-
-  const handleBulkSalaryPayment = () => {
-    const unpaidRecords = filteredSalaries.filter(s => !s.isPaid);
-    if (unpaidRecords.length === 0) {
-      alert("Không có phiếu lương chưa thanh toán trong danh sách đang lọc.");
-      return;
-    }
-    if (window.confirm(`Bạn có chắc chắn muốn thanh toán HÀNG LOẠT cho ${unpaidRecords.length} phiếu lương đang hiển thị?`)) {
-      const now = new Date().toISOString().split('T')[0];
-      const unpaidIds = new Set(unpaidRecords.map(r => r.id));
-      setSalaryRecords(prev => prev.map(s => unpaidIds.has(s.id) ? { ...s, isPaid: true, paymentDate: now } : s));
-      alert(`Đã thanh toán thành công ${unpaidRecords.length} phiếu lương.`);
     }
   };
 
@@ -717,7 +724,7 @@ export default function App() {
 
   const handleDriverSubmit = () => {
     if (!autoAssignedVehicle) {
-      alert('Bạn chưa được phân công xe. Vui lòng liên hệ Admin.');
+      alert('Bạn chưa được phân công xe cho ngày này. Vui lòng liên hệ Admin.');
       return;
     }
     const newReq: FuelRequest = {
@@ -1225,8 +1232,6 @@ export default function App() {
         return uniqueTrips.size;
     }, [filteredSalaries]);
 
-    const unpaidCount = filteredSalaries.filter(s => !s.isPaid).length;
-
     return (
       <div className="space-y-6 animate-fade-in">
           {/* Header Section */}
@@ -1237,12 +1242,7 @@ export default function App() {
                   </h2>
                   <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Hệ thống hạch toán chi phí & doanh thu vận tải</p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                  {unpaidCount > 0 && (
-                    <Button variant="success" className="px-6 py-3 bg-emerald-600 shadow-lg shadow-emerald-200" onClick={handleBulkSalaryPayment}>
-                        <IconCheckCircle className="w-5 h-5" /> Thanh toán hàng loạt ({unpaidCount})
-                    </Button>
-                  )}
+              <div className="flex gap-3">
                   <Button variant="secondary" className="px-6 py-3 bg-slate-50 border-slate-200" onClick={() => {}}>
                       <IconArrowDownTray className="w-5 h-5" /> Xuất Excel
                   </Button>
@@ -1344,7 +1344,7 @@ export default function App() {
           <Card className="p-0 overflow-hidden border-none shadow-xl">
               <div className="overflow-x-auto max-h-[600px] scrollbar-thin scrollbar-thumb-slate-200">
                   <table className="w-full text-left text-[11px] border-collapse min-w-[2000px]">
-                      <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-tighter sticky top-0 z-10">
+                      <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-tighter text-[10px] sticky top-0 z-10">
                           <tr>
                               <th className="p-4 border-r border-white/10">1. NGÀY VC</th>
                               <th className="p-4 border-r border-white/10">2. TÀI XẾ</th>
@@ -2051,14 +2051,17 @@ export default function App() {
   };
 
   const renderFuelReports = () => {
-    // Helper to filter data by date and payment status
+    // Helper to filter data by date, payment status, station, and vehicle
     const filterFuelData = (req: FuelRequest) => {
       const dateMatch = (!reportStartDate || req.requestDate >= reportStartDate) && 
                         (!reportEndDate || req.requestDate <= reportEndDate);
       const paymentMatch = reportPaymentStatus === 'ALL' || 
                           (reportPaymentStatus === 'PAID' && req.isPaid) || 
                           (reportPaymentStatus === 'UNPAID' && !req.isPaid);
-      return dateMatch && paymentMatch && req.status === RequestStatus.APPROVED;
+      const stationMatch = !reportFuelStation || req.stationId === reportFuelStation;
+      const vehicleMatch = !reportFuelVehicle || req.licensePlate.toLowerCase().includes(reportFuelVehicle.toLowerCase().trim());
+      
+      return dateMatch && paymentMatch && stationMatch && vehicleMatch && req.status === RequestStatus.APPROVED;
     };
 
     const filteredFuel = requests.filter(filterFuelData);
@@ -2078,37 +2081,101 @@ export default function App() {
 
     return (
       <div className="space-y-6 animate-fade-in">
-          <Card className="border-t-4 border-[#2c4aa0]">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconGasPump className="w-6 h-6 text-[#2c4aa0]"/> Báo cáo Nhiên liệu & Công nợ</h2>
-              
-              <div className="bg-slate-100 p-6 rounded-3xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase text-slate-500 mb-1 tracking-widest">Tổng tiền duyệt cấp</div>
-                    <div className="text-3xl font-black text-slate-800">{formatCurrency(totalFuelAmount)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase text-rose-50 mb-1 tracking-widest">Còn nợ cây xăng</div>
-                    <div className="text-3xl font-black text-rose-600">{formatCurrency(totalUnpaidFuel)}</div>
-                  </div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                  <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
+                      <IconGasPump className="w-8 h-8 text-[#2c4aa0]"/> Báo cáo Nhiên liệu & Công nợ
+                  </h2>
+                  <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Hạch toán tiêu hao nhiên liệu & quản lý nợ cây xăng</p>
               </div>
+          </div>
 
-              <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
-                    <tr><th className="p-4">Biển số</th><th className="p-4 text-center">Đã thanh toán</th><th className="p-4 text-right">Chưa thanh toán</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {Object.entries(fuelByVehicle).map(([plate, data]: any) => (
-                      <tr key={plate} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-4 font-black text-slate-700">{plate}</td>
-                        <td className="p-4 text-center font-bold text-emerald-600">{formatCurrency(data.paid)}</td>
-                        <td className="p-4 text-right font-black text-rose-500">{formatCurrency(data.unpaid)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <Card className="p-4 border-none shadow-sm bg-white">
+              <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex-1 min-w-[150px]">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Trạm xăng</label>
+                      <select 
+                          value={reportFuelStation} 
+                          onChange={e => setReportFuelStation(e.target.value)} 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                      >
+                          <option value="">Tất cả trạm</option>
+                          {stations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Biển số xe</label>
+                      <input 
+                          value={reportFuelVehicle} 
+                          onChange={e => setReportFuelVehicle(e.target.value)} 
+                          placeholder="Tìm biển số..." 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700" 
+                      />
+                  </div>
+                  <div className="w-40">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Thanh toán</label>
+                      <select 
+                          value={reportPaymentStatus} 
+                          onChange={e => setReportPaymentStatus(e.target.value as any)} 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                      >
+                          <option value="ALL">Tất cả</option>
+                          <option value="PAID">Đã trả nợ</option>
+                          <option value="UNPAID">Chưa trả nợ</option>
+                      </select>
+                  </div>
+                  <div className="w-36">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Từ ngày</label>
+                      <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" />
+                  </div>
+                  <div className="w-36">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Đến ngày</label>
+                      <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" />
+                  </div>
+                  {(reportStartDate || reportEndDate || reportFuelStation || reportFuelVehicle || reportPaymentStatus !== 'ALL') && (
+                      <button onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportFuelStation(''); setReportFuelVehicle(''); setReportPaymentStatus('ALL'); }} className="h-[42px] px-4 text-xs font-black text-rose-500 hover:bg-rose-50 rounded-2xl transition-all uppercase tracking-tighter">
+                          Xóa lọc
+                      </button>
+                  )}
               </div>
           </Card>
+
+          <div className="bg-slate-100 p-6 rounded-3xl border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <div className="text-[10px] font-bold uppercase text-slate-500 mb-1 tracking-widest">Tổng tiền duyệt cấp (Theo lọc)</div>
+                <div className="text-3xl font-black text-slate-800">{formatCurrency(totalFuelAmount)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase text-rose-400 mb-1 tracking-widest">Còn nợ cây xăng (Theo lọc)</div>
+                <div className="text-3xl font-black text-rose-600">{formatCurrency(totalUnpaidFuel)}</div>
+              </div>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-widest text-[10px]">
+                <tr>
+                  <th className="p-4">Biển số phương tiện</th>
+                  <th className="p-4 text-center">Số lượt đổ</th>
+                  <th className="p-4 text-center">Đã thanh toán</th>
+                  <th className="p-4 text-right">Chưa thanh toán</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {Object.entries(fuelByVehicle).map(([plate, data]: any) => (
+                  <tr key={plate} className="hover:bg-blue-50/50 transition-colors">
+                    <td className="p-4 font-black text-slate-700">{plate}</td>
+                    <td className="p-4 text-center font-bold text-slate-500">{data.count}</td>
+                    <td className="p-4 text-center font-bold text-emerald-600">{formatCurrency(data.paid)}</td>
+                    <td className="p-4 text-right font-black text-rose-500">{formatCurrency(data.unpaid)}</td>
+                  </tr>
+                ))}
+                {Object.keys(fuelByVehicle).length === 0 && (
+                  <tr><td colSpan={4} className="p-12 text-center text-slate-300 italic">Không có dữ liệu nhiên liệu phù hợp với điều kiện lọc</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
       </div>
     );
   };
@@ -2120,44 +2187,120 @@ export default function App() {
       const statusMatch = reportAdvanceStatus === 'ALL' || 
                           (reportAdvanceStatus === 'SETTLED' && adv.isSettled) || 
                           (reportAdvanceStatus === 'UNSETTLED' && !adv.isSettled);
-      return dateMatch && statusMatch && adv.status === RequestStatus.APPROVED;
+      const driverMatch = !reportAdvanceDriver || adv.driverName === reportAdvanceDriver;
+      const typeMatch = !reportAdvanceType || adv.typeId === reportAdvanceType;
+      
+      return dateMatch && statusMatch && driverMatch && typeMatch && adv.status === RequestStatus.APPROVED;
     };
 
     const filteredAdvances = advanceRequests.filter(filterAdvanceData);
     const totalUnsettled = filteredAdvances.filter(a => !a.isSettled).reduce((s, a) => s + a.amount, 0);
+    const totalSettled = filteredAdvances.filter(a => a.isSettled).reduce((s, a) => s + a.amount, 0);
 
     return (
       <div className="space-y-6 animate-fade-in">
-          <Card className="border-t-4 border-amber-500">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><IconWallet className="w-6 h-6 text-amber-500"/> Báo cáo Tạm ứng nội bộ</h2>
-              
-              <div className="bg-amber-500 p-6 rounded-3xl border border-amber-600 mb-8">
-                <div className="text-[11px] font-black uppercase text-white mb-1 tracking-widest">Dư nợ tạm ứng hiện tại</div>
-                <div className="text-3xl font-black text-white">{formatCurrency(totalUnsettled)}</div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                  <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
+                      <IconWallet className="w-8 h-8 text-amber-500"/> Báo cáo Tạm ứng & Hoàn ứng
+                  </h2>
+                  <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Theo dõi công nợ nội bộ và đối soát tạm ứng tài xế</p>
               </div>
+          </div>
 
-              <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
-                    <tr><th className="p-4">Tài xế</th><th className="p-4 text-right">Đã hoàn</th><th className="p-4 text-right">Còn nợ</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {drivers.map(d => {
-                      const dAdv = filteredAdvances.filter(a => a.driverName === d.fullName);
-                      const settled = dAdv.filter(a => a.isSettled).reduce((s, a) => s + a.amount, 0);
-                      const unsettled = dAdv.filter(a => !a.isSettled).reduce((s, a) => s + a.amount, 0);
-                      if (settled === 0 && unsettled === 0) return null;
-                      return (
-                        <tr key={d.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="p-4 font-black text-slate-700">{d.fullName}</td>
-                          <td className="p-4 text-right font-bold text-emerald-600">{formatCurrency(settled)}</td>
-                          <td className="p-4 text-right font-black text-rose-500">{formatCurrency(unsettled)}</td>
-                        </tr>
-                      )})}
-                  </tbody>
-                </table>
+          <Card className="p-4 border-none shadow-sm bg-white">
+              <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex-1 min-w-[150px]">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Tài xế</label>
+                      <select 
+                          value={reportAdvanceDriver} 
+                          onChange={e => setReportAdvanceDriver(e.target.value)} 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                      >
+                          <option value="">Tất cả tài xế</option>
+                          {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
+                      </select>
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Loại tạm ứng</label>
+                      <select 
+                          value={reportAdvanceType} 
+                          onChange={e => setReportAdvanceType(e.target.value)} 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                      >
+                          <option value="">Tất cả loại</option>
+                          {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                  </div>
+                  <div className="w-40">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Hoàn ứng</label>
+                      <select 
+                          value={reportAdvanceStatus} 
+                          onChange={e => setReportAdvanceStatus(e.target.value as any)} 
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                      >
+                          <option value="ALL">Tất cả</option>
+                          <option value="SETTLED">Đã hoàn ứng</option>
+                          <option value="UNSETTLED">Chưa hoàn ứng</option>
+                      </select>
+                  </div>
+                  <div className="w-36">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Từ ngày</label>
+                      <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" />
+                  </div>
+                  <div className="w-36">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Đến ngày</label>
+                      <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" />
+                  </div>
+                  {(reportStartDate || reportEndDate || reportAdvanceDriver || reportAdvanceType || reportAdvanceStatus !== 'ALL') && (
+                      <button onClick={() => { setReportStartDate(''); setReportEndDate(''); setReportAdvanceDriver(''); setReportAdvanceType(''); setReportAdvanceStatus('ALL'); }} className="h-[42px] px-4 text-xs font-black text-rose-500 hover:bg-rose-50 rounded-2xl transition-all uppercase tracking-tighter">
+                          Xóa lọc
+                      </button>
+                  )}
               </div>
           </Card>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-amber-500 p-6 rounded-3xl border border-amber-600 shadow-lg shadow-amber-100">
+                <div className="text-[11px] font-black uppercase text-white/80 mb-1 tracking-widest">Tổng nợ tạm ứng (Theo lọc)</div>
+                <div className="text-3xl font-black text-white">{formatCurrency(totalUnsettled)}</div>
+              </div>
+              <div className="bg-emerald-500 p-6 rounded-3xl border border-emerald-600 shadow-lg shadow-emerald-100">
+                <div className="text-[11px] font-black uppercase text-white/80 mb-1 tracking-widest">Tổng đã hoàn ứng (Theo lọc)</div>
+                <div className="text-3xl font-black text-white">{formatCurrency(totalSettled)}</div>
+              </div>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[#2c4aa0] text-white font-bold uppercase tracking-widest text-[10px]">
+                <tr>
+                  <th className="p-4">Tên Tài xế</th>
+                  <th className="p-4 text-center">Số phiếu</th>
+                  <th className="p-4 text-right">Đã hoàn</th>
+                  <th className="p-4 text-right">Còn nợ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {drivers.map(d => {
+                  const dAdv = filteredAdvances.filter(a => a.driverName === d.fullName);
+                  const settled = dAdv.filter(a => a.isSettled).reduce((s, a) => s + a.amount, 0);
+                  const unsettled = dAdv.filter(a => !a.isSettled).reduce((s, a) => s + a.amount, 0);
+                  if (dAdv.length === 0) return null;
+                  return (
+                    <tr key={d.id} className="hover:bg-blue-50/50 transition-colors">
+                      <td className="p-4 font-black text-slate-700">{d.fullName}</td>
+                      <td className="p-4 text-center font-bold text-slate-500">{dAdv.length}</td>
+                      <td className="p-4 text-right font-bold text-emerald-600">{formatCurrency(settled)}</td>
+                      <td className="p-4 text-right font-black text-rose-500">{formatCurrency(unsettled)}</td>
+                    </tr>
+                  )})}
+                {filteredAdvances.length === 0 && (
+                  <tr><td colSpan={4} className="p-12 text-center text-slate-300 italic">Không có dữ liệu tạm ứng phù hợp với điều kiện lọc</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
       </div>
     );
   };
@@ -2936,7 +3079,7 @@ export default function App() {
                 </div>
             )}
 
-            {/* Trips View */}
+            {/* Trips View - UPDATED JOURNEY UI */}
             {driverTab === 'TRIPS' && (
                 <div className="space-y-4">
                     <h2 className="text-lg font-black text-[#2c4aa0] px-2 flex items-center justify-between">
@@ -2945,62 +3088,109 @@ export default function App() {
                     {mySalaryRecords.length === 0 ? (
                         <div className="text-center py-20 text-slate-300 italic text-sm">Chưa có dữ liệu chuyến hàng trong kỳ này.</div>
                     ) : mySalaryRecords.sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime()).map(record => {
-                        const isContainer = record.cargoType?.toLowerCase().includes('cont20') || record.cargoType?.toLowerCase().includes('cont40');
+                        const isContainer = record.cargoType?.toLowerCase().includes('cont');
+                        const refLabel = isContainer ? 'Số Cont' : 'Số DO';
                         
                         return (
-                            <Card key={record.id} className={`border-l-4 p-4 ${record.isPaid ? 'border-emerald-500' : 'border-[#2c4aa0]'}`}>
-                                <div className="flex justify-between items-start mb-3">
+                            <Card key={record.id} className={`border-l-4 p-4 ${record.isPaid ? 'border-emerald-500' : 'border-[#2c4aa0]'} shadow-md hover:shadow-lg transition-all`}>
+                                <div className="flex justify-between items-start mb-4">
                                     <div className="flex flex-col gap-1">
-                                        <div className="text-[10px] font-bold bg-blue-50 text-[#2c4aa0] px-2 py-0.5 rounded-full inline-block w-fit">{record.transportDate}</div>
-                                        {record.isPaid ? (
-                                            <div className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1">
-                                                <IconCheckCircle className="w-3 h-3" /> Đã thanh toán {record.paymentDate ? `(${formatDate(record.paymentDate)})` : ''}
-                                            </div>
-                                        ) : (
-                                            <div className="text-[9px] font-black text-slate-400 uppercase flex items-center gap-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-pulse"></div> Chờ thanh toán
-                                            </div>
-                                        )}
+                                        <div className="text-[10px] font-bold bg-blue-50 text-[#2c4aa0] px-3 py-1 rounded-full inline-block w-fit shadow-sm">{formatDate(record.transportDate)}</div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase border ${isContainer ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+                                              {record.cargoType}
+                                          </span>
+                                          {record.isPaid ? (
+                                              <div className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1">
+                                                  <IconCheckCircle className="w-3 h-3" /> Đã chi
+                                              </div>
+                                          ) : (
+                                              <div className="text-[9px] font-black text-slate-400 uppercase flex items-center gap-1">
+                                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Chờ chi
+                                              </div>
+                                          )}
+                                        </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-sm font-black text-emerald-600">{formatCurrency(record.tripSalary + record.handlingFee)}</div>
-                                        <div className="text-[8px] font-bold text-slate-400 uppercase">Lương + Làm hàng</div>
+                                        <div className="text-base font-black text-[#2c4aa0]">{formatCurrency(record.tripSalary + record.handlingFee)}</div>
+                                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Tổng thu nhập chuyến</div>
                                     </div>
                                 </div>
-                                <div className="space-y-3">
-                                    {/* Smart Itinerary Display */}
-                                    <div className="flex flex-col gap-1.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hành trình vận chuyển:</div>
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-slate-700">
-                                            <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.pickupWarehouse}</span>
-                                            <span className="text-slate-300">→</span>
-                                            <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.deliveryWarehouse}</span>
-                                            {isContainer && (
-                                                <>
-                                                    <span className="text-slate-300">→</span>
-                                                    <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.depotPickup || 'Depot'}</span>
-                                                    <span className="text-slate-300">→</span>
-                                                    <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{record.depotReturn || 'Hạ bãi'}</span>
-                                                </>
-                                            )}
-                                        </div>
+
+                                {/* JOURNEY TIMELINE UI */}
+                                <div className="space-y-4 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 mb-3">
+                                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                                    <IconMapPin className="w-3.5 h-3.5" /> Lộ trình di chuyển
+                                  </div>
+                                  
+                                  <div className="flex flex-col gap-3 relative">
+                                    {/* Timeline line */}
+                                    <div className="absolute left-[13px] top-[10px] bottom-[10px] w-0.5 bg-blue-100"></div>
+
+                                    {/* Step 1: Kho đóng nhập */}
+                                    <div className="flex items-center gap-3 relative z-10">
+                                      <div className="w-7 h-7 bg-white border-2 border-[#2c4aa0] rounded-full flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-[#2c4aa0] rounded-full"></div>
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">Kho đóng nhập</div>
+                                        <div className="text-xs font-bold text-slate-700">{record.pickupWarehouse}</div>
+                                      </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-2 pt-2 border-t border-slate-50 gap-4">
-                                        <div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Loại hàng</div>
-                                            <div className="text-xs font-black text-slate-800 uppercase">{record.cargoType}</div>
+
+                                    {/* Step 2: Địa điểm đóng nhập */}
+                                    <div className="flex items-center gap-3 relative z-10">
+                                      <div className="w-7 h-7 bg-white border-2 border-[#2c4aa0] rounded-full flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-[#2c4aa0] rounded-full"></div>
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">Địa điểm đóng nhập</div>
+                                        <div className="text-xs font-bold text-slate-700">{record.deliveryWarehouse}</div>
+                                      </div>
+                                    </div>
+
+                                    {/* Optional Steps for Container Cargo */}
+                                    {isContainer && (
+                                      <>
+                                        {/* Step 3: Depot lấy rỗng/full */}
+                                        <div className="flex items-center gap-3 relative z-10">
+                                          <div className="w-7 h-7 bg-white border-2 border-indigo-400 rounded-full flex items-center justify-center">
+                                            <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                                          </div>
+                                          <div className="flex-1">
+                                            <div className="text-[9px] font-bold text-indigo-300 uppercase leading-none mb-0.5">Depot lấy rỗng/full</div>
+                                            <div className="text-xs font-bold text-slate-700">{record.depotPickup || '-'}</div>
+                                          </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                {isContainer ? 'Số Container' : 'Số DO'}
-                                            </div>
-                                            <div className="text-xs font-black text-[#2c4aa0] font-mono">{record.containerNo || '-'}</div>
+
+                                        {/* Step 4: Hạ cont/trả rỗng */}
+                                        <div className="flex items-center gap-3 relative z-10">
+                                          <div className="w-7 h-7 bg-white border-2 border-emerald-400 rounded-full flex items-center justify-center">
+                                            <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                                          </div>
+                                          <div className="flex-1">
+                                            <div className="text-[9px] font-bold text-emerald-300 uppercase leading-none mb-0.5">Hạ cont/trả rỗng</div>
+                                            <div className="text-xs font-bold text-slate-700">{record.depotReturn || '-'}</div>
+                                          </div>
                                         </div>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{refLabel}:</span>
+                                      <span className="text-[11px] font-mono font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{record.containerNo}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
+                                      {record.qtyPalletTon > 0 && <span>{record.qtyPalletTon} P/T</span>}
+                                      {record.qty20 > 0 && <span>{record.qty20}x20'</span>}
+                                      {record.qty40 > 0 && <span>{record.qty40}x40'</span>}
                                     </div>
                                 </div>
                             </Card>
-                        );
+                        )
                     })}
                 </div>
             )}
