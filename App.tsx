@@ -95,6 +95,12 @@ const IconMapPin = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const IconShield = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+  </svg>
+);
+
 // --- Constants & Mock Data ---
 const BG_COLOR = '#f5f7fa'; 
 const PRIMARY_BLUE = '#2c4aa0';
@@ -164,6 +170,7 @@ const MOCK_EXPENSES: ExpenseRecord[] = [
 const MOCK_USERS: User[] = [
   { id: 'u1', username: 'admin', password: '123', fullName: 'Quản trị viên HP', role: 'ADMIN' },
   { id: 'u2', username: 'driverA', password: '123', fullName: 'Nguyễn Văn A', role: 'DRIVER' },
+  { id: 'u3', username: 'manager1', password: '123', fullName: 'Quản lý Duyệt Đơn', role: 'MANAGER', permissions: ['DASHBOARD', 'APPROVE_FUEL', 'APPROVE_ADVANCE', 'REPORTS'] },
 ];
 
 const MOCK_SALARY_RECORDS: SalaryRecord[] = [
@@ -202,6 +209,24 @@ const MOCK_SALARY_RECORDS: SalaryRecord[] = [
     handlingFee: 100000,
     isPaid: false
   }
+];
+
+// --- Tab Meta Data for Permissions ---
+const ADMIN_TABS_META: { id: AdminTab; label: string; icon: any; category: string }[] = [
+  { id: 'DASHBOARD', label: 'Tổng quan', icon: IconHome, category: 'Main' },
+  { id: 'APPROVE_FUEL', label: 'Duyệt cấp dầu', icon: IconGasPump, category: 'Approval' },
+  { id: 'APPROVE_EXPENSE', label: 'Duyệt chi phí', icon: IconReceipt, category: 'Approval' },
+  { id: 'APPROVE_ADVANCE', label: 'Duyệt tạm ứng', icon: IconWallet, category: 'Approval' },
+  { id: 'SALARY', label: 'Lương chuyến', icon: IconCurrency, category: 'Management' },
+  { id: 'OPERATION', label: 'Vận hành', icon: IconUsers, category: 'Config' },
+  { id: 'FUEL_SETTINGS', label: 'Cài đặt nhiên liệu', icon: IconGasPump, category: 'Config' },
+  { id: 'EXPENSE_SETTINGS', label: 'Danh mục chi phí', icon: IconReceipt, category: 'Config' },
+  { id: 'REPORTS', label: 'Báo cáo tổng hợp', icon: IconChartBar, category: 'Reports' },
+  { id: 'REPORTS_SALARY', label: 'Báo cáo lương', icon: IconCurrency, category: 'Reports' },
+  { id: 'REPORTS_FUEL', label: 'Báo cáo nhiên liệu', icon: IconGasPump, category: 'Reports' },
+  { id: 'REPORTS_EXPENSE', label: 'Báo cáo chi phí', icon: IconReceipt, category: 'Reports' },
+  { id: 'REPORTS_ADVANCE', label: 'Báo cáo tạm ứng', icon: IconWallet, category: 'Reports' },
+  { id: 'USERS', label: 'Người dùng', icon: IconUser, category: 'System' },
 ];
 
 // --- Helper Functions ---
@@ -433,6 +458,9 @@ export default function App() {
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // User Management Permissions State
+  const [selectedManagerPermissions, setSelectedManagerPermissions] = useState<AdminTab[]>([]);
+
   // Derived State
   const autoAssignedVehicle = useMemo(() => {
     return getAssignedVehicle(currentUser?.fullName || '', newRequestDate, assignments);
@@ -473,6 +501,14 @@ export default function App() {
     setSalaryPaidFilter('ALL');
   };
 
+  // Check if a tab is permitted for the current user
+  const isTabPermitted = (tabId: AdminTab) => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'ADMIN') return true;
+    if (currentUser.role === 'MANAGER' && currentUser.permissions?.includes(tabId)) return true;
+    return false;
+  };
+
   // --- Auth Handlers ---
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -481,6 +517,10 @@ export default function App() {
       setCurrentUser(user);
       setLoginError('');
       if (user.role === 'ADMIN') setActiveTab('DASHBOARD');
+      else if (user.role === 'MANAGER') {
+        const firstPerm = user.permissions?.[0] || 'DASHBOARD';
+        setActiveTab(firstPerm);
+      }
       else setDriverTab('DASHBOARD');
     } else {
       setLoginError('Tài khoản hoặc mật khẩu không chính xác.');
@@ -902,6 +942,12 @@ export default function App() {
     alert("Đã tạo và duyệt phiếu tạm ứng!");
   };
 
+  const handleTogglePermission = (tabId: AdminTab) => {
+    setSelectedManagerPermissions(prev => 
+      prev.includes(tabId) ? prev.filter(p => p !== tabId) : [...prev, tabId]
+    );
+  };
+
   // AI analysis handler
   const handleRunAnalysis = async () => {
     setIsAnalyzing(true);
@@ -921,26 +967,26 @@ export default function App() {
   const renderDashboard = () => (
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_FUEL')}>
+          <Card className={`relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all ${!isTabPermitted('APPROVE_FUEL') && 'opacity-50 grayscale'}`} onClick={() => isTabPermitted('APPROVE_FUEL') && setActiveTab('APPROVE_FUEL')}>
             <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-amber-500/20 transition-all duration-500"></div>
             <div className="text-[10px] sm:text-xs font-bold text-amber-500 uppercase tracking-widest mb-1">Xử lý dầu</div>
             <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Chờ duyệt cấp</div>
             <div className="text-3xl sm:text-4xl font-black text-gray-800">{requests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">phiếu</span></div>
           </Card>
-          <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_EXPENSE')}>
+          <Card className={`relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all ${!isTabPermitted('APPROVE_EXPENSE') && 'opacity-50 grayscale'}`} onClick={() => isTabPermitted('APPROVE_EXPENSE') && setActiveTab('APPROVE_EXPENSE')}>
             <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-rose-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-rose-500/20 transition-all duration-500"></div>
             <div className="text-[10px] sm:text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Tài xế chi</div>
             <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Chờ phê duyệt</div>
             <div className="text-3xl sm:text-4xl font-black text-gray-800">{expenseRecords.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">khoản</span></div>
           </Card>
-          <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_ADVANCE')}>
+          <Card className={`relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all ${!isTabPermitted('APPROVE_ADVANCE') && 'opacity-50 grayscale'}`} onClick={() => isTabPermitted('APPROVE_ADVANCE') && setActiveTab('APPROVE_ADVANCE')}>
             <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-orange-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-orange-500/20 transition-all duration-500"></div>
             <div className="text-[10px] sm:text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">Tài chính</div>
             <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Tạm ứng chờ duyệt</div>
             <div className="text-3xl sm:text-4xl font-black text-gray-800">{advanceRequests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">yêu cầu</span></div>
           </Card>
-          <Card className="relative overflow-hidden group border-l-4 border-[#2c4aa0] cursor-pointer hover:border-blue-200 transition-all" onClick={() => setActiveTab('SALARY')}>
-            <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-blue-500/20 transition-all duration-500"></div>
+          <Card className={`relative overflow-hidden group border-l-4 border-[#2c4aa0] cursor-pointer hover:border-blue-200 transition-all ${!isTabPermitted('SALARY') && 'opacity-50 grayscale'}`} onClick={() => isTabPermitted('SALARY') && setActiveTab('SALARY')}>
+            <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-blue-50/20 transition-all duration-500"></div>
             <div className="text-[10px] sm:text-xs font-bold text-[#2c4aa0] uppercase tracking-widest mb-1">Vận tải</div>
             <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Sản lượng chuyến</div>
             <div className="text-3xl sm:text-4xl font-black text-gray-800">{salaryRecords.length} <span className="text-sm font-normal text-gray-400">chuyến</span></div>
@@ -2215,7 +2261,7 @@ export default function App() {
                       <select 
                           value={reportAdvanceDriver} 
                           onChange={e => setReportAdvanceDriver(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-sm font-semibold text-slate-700"
                       >
                           <option value="">Tất cả tài xế</option>
                           {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
@@ -2226,7 +2272,7 @@ export default function App() {
                       <select 
                           value={reportAdvanceType} 
                           onChange={e => setReportAdvanceType(e.target.value)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-sm font-semibold text-slate-700"
                       >
                           <option value="">Tất cả loại</option>
                           {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -2237,7 +2283,7 @@ export default function App() {
                       <select 
                           value={reportAdvanceStatus} 
                           onChange={e => setReportAdvanceStatus(e.target.value as any)} 
-                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm font-semibold text-slate-700"
+                          className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-sm font-semibold text-slate-700"
                       >
                           <option value="ALL">Tất cả</option>
                           <option value="SETTLED">Đã hoàn ứng</option>
@@ -2246,7 +2292,7 @@ export default function App() {
                   </div>
                   <div className="w-36">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Từ ngày</label>
-                      <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-xs font-bold" />
+                      <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)} className="w-full p-2.5 border border-slate-100 bg-slate-50 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-xs font-bold" />
                   </div>
                   <div className="w-36">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Đến ngày</label>
@@ -2677,50 +2723,85 @@ export default function App() {
 
   const renderUserManagement = () => (
     <div className="space-y-8 animate-fade-in">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-1 border-t-4 border-[#2c4aa0]">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
+        <Card className="border-t-4 border-[#2c4aa0]">
           <h2 className="text-xl font-bold text-[#2c4aa0] mb-6 flex items-center gap-2">
-            <IconPlus className="w-5 h-5" /> Thêm người dùng
+            <IconPlus className="w-5 h-5" /> Thêm người dùng & Phân quyền
           </h2>
-          <form className="space-y-4" onSubmit={(e) => {
+          <form className="space-y-6" onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
+            const role = fd.get('role') as UserRole;
             const newUser: User = {
               id: Math.random().toString(36).substr(2, 9),
               username: fd.get('username') as string,
               password: fd.get('password') as string,
               fullName: fd.get('fullName') as string,
-              role: fd.get('role') as UserRole
+              role: role,
+              permissions: role === 'MANAGER' ? selectedManagerPermissions : undefined
             };
             setUsers([...users, newUser]);
+            setSelectedManagerPermissions([]);
             e.currentTarget.reset();
           }}>
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Tên hiển thị</label>
-              <input name="fullName" required className="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Tên hiển thị</label>
+                <input name="fullName" required className="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Tên đăng nhập</label>
+                <input name="username" required className="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Mật khẩu</label>
+                <input name="password" type="password" required className="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Vai trò</label>
+                <select name="role" id="role-select" required className="w-full p-2.5 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-100" onChange={(e) => {
+                  if (e.target.value !== 'MANAGER') setSelectedManagerPermissions([]);
+                }}>
+                  <option value="DRIVER">Tài xế</option>
+                  <option value="MANAGER">Quản lý (Có quyền hạn)</option>
+                  <option value="ADMIN">Quản trị viên (Toàn quyền)</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Tên đăng nhập</label>
-              <input name="username" required className="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
+
+            {/* Permissions UI for Manager Role */}
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+              <h3 className="text-xs font-black text-[#2c4aa0] uppercase tracking-widest flex items-center gap-2">
+                <IconShield className="w-4 h-4" /> Phân quyền chức năng (Dành cho vai trò Quản lý)
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {ADMIN_TABS_META.map(tab => (
+                  <label key={tab.id} className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm cursor-pointer hover:border-blue-200 transition-all">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-slate-200 text-[#2c4aa0] focus:ring-[#2c4aa0]"
+                      checked={selectedManagerPermissions.includes(tab.id)}
+                      onChange={() => handleTogglePermission(tab.id)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <tab.icon className="w-4 h-4 text-slate-400" />
+                      <span className="text-[11px] font-bold text-slate-600">{tab.label}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 italic">* Tích chọn các mục Quản lý được phép xem và thao tác. Quản trị viên (Admin) mặc định có toàn quyền.</p>
             </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Mật khẩu</label>
-              <input name="password" type="password" required className="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-100" />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Vai trò</label>
-              <select name="role" required className="w-full p-2.5 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-100">
-                <option value="DRIVER">Tài xế</option>
-                <option value="ADMIN">Quản trị viên</option>
-              </select>
-            </div>
-            <Button type="submit" className="w-full py-3 mt-4">Tạo người dùng mới</Button>
+
+            <Button type="submit" className="w-full py-3 shadow-lg shadow-blue-100">
+              <IconPlus className="w-5 h-5" /> Khởi tạo tài khoản hệ thống
+            </Button>
           </form>
         </Card>
         
-        <Card className="lg:col-span-2">
+        <Card>
           <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <IconUsers className="w-6 h-6 text-[#2c4aa0]" /> Danh sách người dùng
+            <IconUsers className="w-6 h-6 text-[#2c4aa0]" /> Danh sách người dùng hệ thống
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -2729,6 +2810,7 @@ export default function App() {
                   <th className="p-3">Họ và tên</th>
                   <th className="p-3">Tài khoản</th>
                   <th className="p-3 text-center">Vai trò</th>
+                  <th className="p-3">Quyền hạn</th>
                   <th className="p-3 text-right">Tác vụ</th>
                 </tr>
               </thead>
@@ -2738,9 +2820,26 @@ export default function App() {
                     <td className="p-3 font-bold text-gray-800">{u.fullName}</td>
                     <td className="p-3 text-gray-500 font-mono">{u.username}</td>
                     <td className="p-3 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {u.role}
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 
+                        u.role === 'MANAGER' ? 'bg-amber-100 text-amber-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {u.role === 'ADMIN' ? 'Quản trị' : u.role === 'MANAGER' ? 'Quản lý' : 'Tài xế'}
                       </span>
+                    </td>
+                    <td className="p-3">
+                      {u.role === 'ADMIN' ? (
+                        <span className="text-[10px] font-bold text-emerald-600">Toàn quyền hệ thống</span>
+                      ) : u.role === 'MANAGER' ? (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {u.permissions?.map(p => (
+                            <span key={p} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[8px] font-bold">{ADMIN_TABS_META.find(m => m.id === p)?.label}</span>
+                          )) || <span className="text-slate-300 italic text-[9px]">Chưa cấp quyền</span>}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">Ứng dụng tài xế</span>
+                      )}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-2">
@@ -2773,84 +2872,130 @@ export default function App() {
       <div className="w-full lg:w-64 flex-shrink-0">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sticky top-24 space-y-1">
             <h3 className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">Menu chính</h3>
-            <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'DASHBOARD' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconHome className={`w-5 h-5 ${activeTab === 'DASHBOARD' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Tổng quan</span>
-            </button>
-            <button onClick={() => setActiveTab('APPROVE_FUEL')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconGasPump className={`w-5 h-5 ${activeTab === 'APPROVE_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Duyệt cấp dầu</span>
-            </button>
-            <button onClick={() => setActiveTab('APPROVE_EXPENSE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconReceipt className={`w-5 h-5 ${activeTab === 'APPROVE_EXPENSE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Duyệt chi phí</span>
-            </button>
-            <button onClick={() => setActiveTab('APPROVE_ADVANCE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconWallet className={`w-5 h-5 ${activeTab === 'APPROVE_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Duyệt tạm ứng</span>
-            </button>
-            <button onClick={() => setActiveTab('SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconCurrency className={`w-5 h-5 ${activeTab === 'SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Lương chuyến</span>
-            </button>
             
-            <h3 className="px-3 py-2 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">HỆ THỐNG BÁO CÁO</h3>
-            <button onClick={() => setActiveTab('REPORTS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconChartBar className={`w-5 h-5 ${activeTab === 'REPORTS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Báo cáo tổng hợp</span>
-            </button>
-            <button onClick={() => setActiveTab('REPORTS_SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconCurrency className={`w-5 h-5 ${activeTab === 'REPORTS_SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Báo cáo lương</span>
-            </button>
-            <button onClick={() => setActiveTab('REPORTS_FUEL')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconGasPump className={`w-5 h-5 ${activeTab === 'REPORTS_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Báo cáo nhiên liệu</span>
-            </button>
-            <button onClick={() => setActiveTab('REPORTS_EXPENSE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconReceipt className={`w-5 h-5 ${activeTab === 'REPORTS_EXPENSE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Báo cáo chi phí tài xế</span>
-            </button>
-            <button onClick={() => setActiveTab('REPORTS_ADVANCE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconWallet className={`w-5 h-5 ${activeTab === 'REPORTS_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Báo cáo tạm ứng</span>
-            </button>
+            {isTabPermitted('DASHBOARD') && (
+              <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'DASHBOARD' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconHome className={`w-5 h-5 ${activeTab === 'DASHBOARD' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Tổng quan</span>
+              </button>
+            )}
 
-            <h3 className="px-3 py-2 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">CẤU HÌNH</h3>
-            <button onClick={() => setActiveTab('OPERATION')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'OPERATION' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconUsers className={`w-5 h-5 ${activeTab === 'OPERATION' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Vận hành</span>
-            </button>
-            <button onClick={() => setActiveTab('FUEL_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'FUEL_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconGasPump className={`w-5 h-5 ${activeTab === 'FUEL_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Nhiên liệu</span>
-            </button>
-            <button onClick={() => setActiveTab('EXPENSE_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'EXPENSE_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconReceipt className={`w-5 h-5 ${activeTab === 'EXPENSE_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`}  /> 
-              <span>Danh mục chi phí</span>
-            </button>
-            <button onClick={() => setActiveTab('USERS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'USERS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
-              <IconUser className={`w-5 h-5 ${activeTab === 'USERS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
-              <span>Người dùng</span>
-            </button>
+            {isTabPermitted('APPROVE_FUEL') && (
+              <button onClick={() => setActiveTab('APPROVE_FUEL')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconGasPump className={`w-5 h-5 ${activeTab === 'APPROVE_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Duyệt cấp dầu</span>
+              </button>
+            )}
+
+            {isTabPermitted('APPROVE_EXPENSE') && (
+              <button onClick={() => setActiveTab('APPROVE_EXPENSE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconReceipt className={`w-5 h-5 ${activeTab === 'APPROVE_EXPENSE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Duyệt chi phí</span>
+              </button>
+            )}
+
+            {isTabPermitted('APPROVE_ADVANCE') && (
+              <button onClick={() => setActiveTab('APPROVE_ADVANCE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'APPROVE_ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconWallet className={`w-5 h-5 ${activeTab === 'APPROVE_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Duyệt tạm ứng</span>
+              </button>
+            )}
+
+            {isTabPermitted('SALARY') && (
+              <button onClick={() => setActiveTab('SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconCurrency className={`w-5 h-5 ${activeTab === 'SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Lương chuyến</span>
+              </button>
+            )}
+            
+            {(isTabPermitted('REPORTS') || isTabPermitted('REPORTS_SALARY') || isTabPermitted('REPORTS_FUEL') || isTabPermitted('REPORTS_EXPENSE') || isTabPermitted('REPORTS_ADVANCE')) && (
+              <h3 className="px-3 py-2 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">HỆ THỐNG BÁO CÁO</h3>
+            )}
+
+            {isTabPermitted('REPORTS') && (
+              <button onClick={() => setActiveTab('REPORTS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconChartBar className={`w-5 h-5 ${activeTab === 'REPORTS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Báo cáo tổng hợp</span>
+              </button>
+            )}
+
+            {isTabPermitted('REPORTS_SALARY') && (
+              <button onClick={() => setActiveTab('REPORTS_SALARY')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_SALARY' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconCurrency className={`w-5 h-5 ${activeTab === 'REPORTS_SALARY' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Báo cáo lương</span>
+              </button>
+            )}
+
+            {isTabPermitted('REPORTS_FUEL') && (
+              <button onClick={() => setActiveTab('REPORTS_FUEL')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconGasPump className={`w-5 h-5 ${activeTab === 'REPORTS_FUEL' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Báo cáo nhiên liệu</span>
+              </button>
+            )}
+
+            {isTabPermitted('REPORTS_EXPENSE') && (
+              <button onClick={() => setActiveTab('REPORTS_EXPENSE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconReceipt className={`w-5 h-5 ${activeTab === 'REPORTS_EXPENSE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Báo cáo chi phí tài xế</span>
+              </button>
+            )}
+
+            {isTabPermitted('REPORTS_ADVANCE') && (
+              <button onClick={() => setActiveTab('REPORTS_ADVANCE')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'REPORTS_ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconWallet className={`w-5 h-5 ${activeTab === 'REPORTS_ADVANCE' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Báo cáo tạm ứng</span>
+              </button>
+            )}
+
+            {(isTabPermitted('OPERATION') || isTabPermitted('FUEL_SETTINGS') || isTabPermitted('EXPENSE_SETTINGS') || isTabPermitted('USERS')) && (
+              <h3 className="px-3 py-2 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-[2px]">Hệ thống</h3>
+            )}
+
+            {isTabPermitted('OPERATION') && (
+              <button onClick={() => setActiveTab('OPERATION')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'OPERATION' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconUsers className={`w-5 h-5 ${activeTab === 'OPERATION' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Vận hành</span>
+              </button>
+            )}
+
+            {isTabPermitted('FUEL_SETTINGS') && (
+              <button onClick={() => setActiveTab('FUEL_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'FUEL_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconGasPump className={`w-5 h-5 ${activeTab === 'FUEL_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Giá dầu & Trạm</span>
+              </button>
+            )}
+
+            {isTabPermitted('EXPENSE_SETTINGS') && (
+              <button onClick={() => setActiveTab('EXPENSE_SETTINGS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'EXPENSE_SETTINGS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconReceipt className={`w-5 h-5 ${activeTab === 'EXPENSE_SETTINGS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`}  /> 
+                <span>Danh mục chi</span>
+              </button>
+            )}
+
+            {isTabPermitted('USERS') && (
+              <button onClick={() => setActiveTab('USERS')} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${activeTab === 'USERS' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-[#2c4aa0]/20' : 'text-slate-600 hover:bg-slate-50 hover:text-[#2c4aa0]'}`}>
+                <IconUser className={`w-5 h-5 ${activeTab === 'USERS' ? 'text-white' : 'text-slate-400 group-hover:text-[#2c4aa0]'}`} /> 
+                <span>Người dùng</span>
+              </button>
+            )}
         </div>
       </div>
 
       <div className="flex-1 space-y-8">
-        {activeTab === 'DASHBOARD' && renderDashboard()}
-        {activeTab === 'APPROVE_FUEL' && renderApproveFuel()}
-        {activeTab === 'APPROVE_EXPENSE' && renderApproveExpense()}
-        {activeTab === 'APPROVE_ADVANCE' && renderApproveAdvance()}
-        {activeTab === 'SALARY' && renderSalaryManagement()}
-        {activeTab === 'OPERATION' && renderOperationManagement()}
-        {activeTab === 'EXPENSE_SETTINGS' && renderExpenseSettings()}
-        {activeTab === 'FUEL_SETTINGS' && renderFuelSettings()}
-        {activeTab === 'USERS' && renderUserManagement()}
-        {activeTab === 'REPORTS' && renderReports()}
-        {activeTab === 'REPORTS_FUEL' && renderFuelReports()}
-        {activeTab === 'REPORTS_ADVANCE' && renderAdvanceReports()}
-        {activeTab === 'REPORTS_SALARY' && renderSalaryReports()}
-        {activeTab === 'REPORTS_EXPENSE' && renderExpenseReports()}
+        {activeTab === 'DASHBOARD' && isTabPermitted('DASHBOARD') && renderDashboard()}
+        {activeTab === 'APPROVE_FUEL' && isTabPermitted('APPROVE_FUEL') && renderApproveFuel()}
+        {activeTab === 'APPROVE_EXPENSE' && isTabPermitted('APPROVE_EXPENSE') && renderApproveExpense()}
+        {activeTab === 'APPROVE_ADVANCE' && isTabPermitted('APPROVE_ADVANCE') && renderApproveAdvance()}
+        {activeTab === 'SALARY' && isTabPermitted('SALARY') && renderSalaryManagement()}
+        {activeTab === 'OPERATION' && isTabPermitted('OPERATION') && renderOperationManagement()}
+        {activeTab === 'EXPENSE_SETTINGS' && isTabPermitted('EXPENSE_SETTINGS') && renderExpenseSettings()}
+        {activeTab === 'FUEL_SETTINGS' && isTabPermitted('FUEL_SETTINGS') && renderFuelSettings()}
+        {activeTab === 'USERS' && isTabPermitted('USERS') && renderUserManagement()}
+        {activeTab === 'REPORTS' && isTabPermitted('REPORTS') && renderReports()}
+        {activeTab === 'REPORTS_FUEL' && isTabPermitted('REPORTS_FUEL') && renderFuelReports()}
+        {activeTab === 'REPORTS_ADVANCE' && isTabPermitted('REPORTS_ADVANCE') && renderAdvanceReports()}
+        {activeTab === 'REPORTS_SALARY' && isTabPermitted('REPORTS_SALARY') && renderSalaryReports()}
+        {activeTab === 'REPORTS_EXPENSE' && isTabPermitted('REPORTS_EXPENSE') && renderExpenseReports()}
       </div>
     </div>
   );
@@ -3390,7 +3535,7 @@ export default function App() {
               <div className="text-right hidden sm:block">
                 <div className="text-xs font-black text-slate-700">{currentUser.fullName}</div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                   {currentUser.role === 'ADMIN' ? 'Ban điều hành' : 'Tài xế Hiệp Phát'}
+                   {currentUser.role === 'ADMIN' ? 'Ban điều hành' : currentUser.role === 'MANAGER' ? 'Quản lý nghiệp vụ' : 'Tài xế Hiệp Phát'}
                 </div>
               </div>
               <div className="w-10 h-10 bg-blue-50 rounded-full border-2 border-white flex items-center justify-center group-hover:bg-blue-100 transition-colors overflow-hidden">
@@ -3477,57 +3622,4 @@ export default function App() {
 
       {showCopyModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center scale-in border-none">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-              <IconCheck className="w-8 h-8"/>
-            </div>
-            <h3 className="text-2xl font-black mb-2 text-slate-800 tracking-tight">Thành công!</h3>
-            <p className="text-sm text-slate-500 mb-6">Thông tin đã được hệ thống ghi nhận và sẵn sàng gửi đi.</p>
-            <div className="bg-slate-50 p-4 rounded-2xl text-left text-[11px] font-mono mb-8 whitespace-pre-line border border-slate-100 leading-relaxed text-slate-600">
-              {copyMessage}
-            </div>
-            <Button onClick={handleCopy} className="w-full py-4 text-base shadow-lg shadow-emerald-200 bg-emerald-600 hover:bg-emerald-700">Copy & Đóng</Button>
-          </div>
-        </div>
-      )}
-      
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        .scale-in { animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        .scale-hover:active { transform: scale(0.98); }
-        
-        /* Custom Scrollbar */
-        .scrollbar-thin::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-track {
-          background: #f1f1f1;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 10px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-      `}</style>
-    </div>
-  );
-}
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-

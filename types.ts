@@ -128,7 +128,8 @@ export interface User {
   password?: string;
   fullName: string;
   role: UserRole;
+  permissions?: AdminTab[]; // Danh sách các Tab được phép truy cập (chỉ dùng cho MANAGER)
 }
 
-export type UserRole = 'DRIVER' | 'ADMIN';
+export type UserRole = 'DRIVER' | 'MANAGER' | 'ADMIN';
 export type AdminTab = 'DASHBOARD' | 'APPROVE_FUEL' | 'APPROVE_ADVANCE' | 'APPROVE_EXPENSE' | 'SALARY' | 'EXPENSE_SETTINGS' | 'OPERATION' | 'REPORTS' | 'REPORTS_FUEL' | 'REPORTS_ADVANCE' | 'REPORTS_SALARY' | 'REPORTS_EXPENSE' | 'USERS' | 'FUEL_SETTINGS';
