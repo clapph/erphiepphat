@@ -259,7 +259,7 @@ const Button = ({ children, onClick, variant = 'primary', className = '', disabl
 };
 
 const Card = ({ children, className = '', onClick }: any) => (
-  <div onClick={onClick} className={`bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-white/40 p-6 ${className}`}>
+  <div onClick={onClick} className={`bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-white/40 p-4 sm:p-6 ${className}`}>
     {children}
   </div>
 );
@@ -276,7 +276,7 @@ const Badge = ({ status }: { status: RequestStatus }) => {
     [RequestStatus.REJECTED]: 'Từ chối',
   };
   return (
-    <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${styles[status]}`}>
+    <span className={`px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold border ${styles[status]} whitespace-nowrap`}>
       {labels[status]}
     </span>
   );
@@ -292,11 +292,13 @@ const VehicleStatusBadge = ({ status }: { status: VehicleStatus }) => {
     'INACTIVE': 'Ngừng vận hành',
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${styles[status]}`}>
+    <span className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${styles[status]}`}>
       {labels[status]}
     </span>
   );
 };
+
+type DriverViewTab = 'DASHBOARD' | 'FUEL' | 'EXPENSE' | 'ADVANCE' | 'TRIPS';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -346,7 +348,7 @@ export default function App() {
   const [adminNewNote, setAdminNewNote] = useState('');
   const [adminNewFullTank, setAdminNewFullTank] = useState(false);
 
-  const [driverTab, setDriverTab] = useState<'FUEL' | 'ADVANCE' | 'EXPENSE' | 'REPORTS'>('FUEL');
+  const [driverTab, setDriverTab] = useState<DriverViewTab>('DASHBOARD');
 
   const [newRequestDate, setNewRequestDate] = useState(new Date().toISOString().split('T')[0]);
   const [newRequestNote, setNewRequestNote] = useState('');
@@ -356,6 +358,12 @@ export default function App() {
   const [drExpAmount, setDrExpAmount] = useState('');
   const [drExpCategory, setDrExpCategory] = useState('');
   const [drExpNote, setDrExpNote] = useState('');
+
+  // Driver advance form state
+  const [drAdvDate, setDrAdvDate] = useState(new Date().toISOString().split('T')[0]);
+  const [drAdvAmount, setDrAdvAmount] = useState('');
+  const [drAdvType, setDrAdvType] = useState('');
+  const [drAdvNote, setDrAdvNote] = useState('');
 
   // Password State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -440,7 +448,7 @@ export default function App() {
       setCurrentUser(user);
       setLoginError('');
       if (user.role === 'ADMIN') setActiveTab('DASHBOARD');
-      else setDriverTab('FUEL');
+      else setDriverTab('DASHBOARD');
     } else {
       setLoginError('Tài khoản hoặc mật khẩu không chính xác.');
     }
@@ -714,6 +722,27 @@ export default function App() {
     alert("Đã gửi yêu cầu chi phí! Vui lòng chờ Admin duyệt.");
   };
 
+  const handleDriverSubmitAdvance = () => {
+    if (!drAdvAmount || !drAdvType) {
+      alert("Vui lòng nhập đầy đủ thông tin tạm ứng.");
+      return;
+    }
+    const newReq: AdvanceRequest = {
+      id: Math.random().toString(36).substr(2, 9),
+      driverName: currentUser?.fullName || '',
+      requestDate: drAdvDate,
+      amount: parseFloat(drAdvAmount),
+      typeId: drAdvType,
+      status: RequestStatus.PENDING,
+      notes: drAdvNote,
+      isSettled: false
+    };
+    setAdvanceRequests([newReq, ...advanceRequests]);
+    setDrAdvAmount('');
+    setDrAdvNote('');
+    alert("Đã gửi yêu cầu tạm ứng! Vui lòng chờ Admin duyệt.");
+  };
+
   const handleAdminCreateRequest = () => {
     if (!adminNewDriver || (!adminNewAmount && !adminNewFullTank) || !adminNewStation || !adminAutoVehicle) {
       alert("Vui lòng nhập đầy đủ thông tin.");
@@ -849,45 +878,45 @@ export default function App() {
   // --- Views as internal functions ---
 
   const renderDashboard = () => (
-    <div className="space-y-8 animate-fade-in">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_FUEL')}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-amber-500/20 transition-all duration-500"></div>
-            <div className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-1">Xử lý dầu</div>
-            <div className="text-sm font-medium text-gray-400 mb-2">Chờ duyệt cấp</div>
-            <div className="text-4xl font-black text-gray-800">{requests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">phiếu</span></div>
+            <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-amber-500/20 transition-all duration-500"></div>
+            <div className="text-[10px] sm:text-xs font-bold text-amber-500 uppercase tracking-widest mb-1">Xử lý dầu</div>
+            <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Chờ duyệt cấp</div>
+            <div className="text-3xl sm:text-4xl font-black text-gray-800">{requests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">phiếu</span></div>
           </Card>
           <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_EXPENSE')}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-rose-500/20 transition-all duration-500"></div>
-            <div className="text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Tài xế chi</div>
-            <div className="text-sm font-medium text-gray-400 mb-2">Chờ phê duyệt</div>
-            <div className="text-4xl font-black text-gray-800">{expenseRecords.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">khoản</span></div>
+            <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-rose-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-rose-500/20 transition-all duration-500"></div>
+            <div className="text-[10px] sm:text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Tài xế chi</div>
+            <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Chờ phê duyệt</div>
+            <div className="text-3xl sm:text-4xl font-black text-gray-800">{expenseRecords.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">khoản</span></div>
           </Card>
           <Card className="relative overflow-hidden group cursor-pointer hover:border-[#2c4aa0]/30 transition-all" onClick={() => setActiveTab('APPROVE_ADVANCE')}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-orange-500/20 transition-all duration-500"></div>
-            <div className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">Tài chính</div>
-            <div className="text-sm font-medium text-gray-400 mb-2">Tạm ứng chờ duyệt</div>
-            <div className="text-4xl font-black text-gray-800">{advanceRequests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">yêu cầu</span></div>
+            <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-orange-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-orange-500/20 transition-all duration-500"></div>
+            <div className="text-[10px] sm:text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">Tài chính</div>
+            <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Tạm ứng chờ duyệt</div>
+            <div className="text-3xl sm:text-4xl font-black text-gray-800">{advanceRequests.filter(r=>r.status==='PENDING').length} <span className="text-sm font-normal text-gray-400">yêu cầu</span></div>
           </Card>
           <Card className="relative overflow-hidden group border-l-4 border-[#2c4aa0] cursor-pointer hover:border-blue-200 transition-all" onClick={() => setActiveTab('SALARY')}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-blue-500/20 transition-all duration-500"></div>
-            <div className="text-xs font-bold text-[#2c4aa0] uppercase tracking-widest mb-1">Vận tải</div>
-            <div className="text-sm font-medium text-gray-400 mb-2">Sản lượng chuyến</div>
-            <div className="text-4xl font-black text-gray-800">{salaryRecords.length} <span className="text-sm font-normal text-gray-400">chuyến</span></div>
+            <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 group-hover:bg-blue-500/20 transition-all duration-500"></div>
+            <div className="text-[10px] sm:text-xs font-bold text-[#2c4aa0] uppercase tracking-widest mb-1">Vận tải</div>
+            <div className="text-xs sm:text-sm font-medium text-gray-400 mb-2">Sản lượng chuyến</div>
+            <div className="text-3xl sm:text-4xl font-black text-gray-800">{salaryRecords.length} <span className="text-sm font-normal text-gray-400">chuyến</span></div>
           </Card>
         </div>
 
         {/* AI Analysis Section */}
         <Card className="border-t-4 border-[#2c4aa0] bg-blue-50/20">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
                     <IconSparkles className="w-5 h-5 text-amber-500" /> Phân tích thông minh (AI Insights)
                 </h3>
                 <Button 
                   variant="primary" 
                   onClick={handleRunAnalysis} 
                   disabled={isAnalyzing}
-                  className="text-xs py-1.5 px-4 rounded-xl"
+                  className="text-[10px] sm:text-xs py-1.5 px-4 rounded-xl w-full sm:w-auto"
                 >
                   {isAnalyzing ? (
                     <>
@@ -898,11 +927,11 @@ export default function App() {
                 </Button>
             </div>
             {aiAnalysis ? (
-                <div className="text-sm text-gray-700 leading-relaxed bg-white p-5 rounded-2xl border border-blue-100 shadow-sm animate-fade-in">
+                <div className="text-xs sm:text-sm text-gray-700 leading-relaxed bg-white p-4 sm:p-5 rounded-2xl border border-blue-100 shadow-sm animate-fade-in">
                     {aiAnalysis}
                 </div>
             ) : (
-                <div className="text-sm text-gray-400 italic text-center py-6 bg-white/50 rounded-2xl border border-dashed border-gray-200">
+                <div className="text-xs sm:text-sm text-gray-400 italic text-center py-6 bg-white/50 rounded-2xl border border-dashed border-gray-200">
                     Nhấn "Cập nhật phân tích" để AI xem xét dữ liệu vận hành gần đây của bạn.
                 </div>
             )}
@@ -913,51 +942,51 @@ export default function App() {
   const renderApproveAdvance = () => (
     <div className="space-y-6 animate-fade-in">
       <Card className="border-[#2c4aa0] border-2">
-          <h2 className="text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-bold text-[#2c4aa0] mb-4 flex items-center gap-2">
               <IconPlus className="w-5 h-5" /> Tạo & Duyệt nhanh phiếu Tạm ứng
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                   <label className="text-xs font-semibold text-gray-600">Tài xế</label>
-                  <select className="w-full p-2 text-sm border rounded" value={adminAdvDriver} onChange={e => setAdminAdvDriver(e.target.value)}>
+                  <select className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-blue-100 outline-none" value={adminAdvDriver} onChange={e => setAdminAdvDriver(e.target.value)}>
                       <option value="">-- Chọn tài xế --</option>
                       {drivers.map(d => <option key={d.id} value={d.fullName}>{d.fullName}</option>)}
                   </select>
               </div>
               <div>
                   <label className="text-xs font-semibold text-gray-600">Ngày</label>
-                  <input type="date" className="w-full p-2 text-sm border rounded" value={adminAdvDate} onChange={e => setAdminAdvDate(e.target.value)} />
+                  <input type="date" className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-blue-100 outline-none" value={adminAdvDate} onChange={e => setAdminAdvDate(e.target.value)} />
               </div>
               <div>
                   <label className="text-xs font-semibold text-gray-600">Số tiền (VNĐ)</label>
                   <input 
                     type="number" 
-                    className="w-full p-2 text-sm border rounded" 
+                    className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-blue-100 outline-none" 
                     value={adminAdvAmount} 
                     onChange={e => setAdminAdvAmount(e.target.value)} 
                   />
               </div>
               <div>
                   <label className="text-xs font-semibold text-gray-600">Loại chi</label>
-                  <select className="w-full p-2 text-sm border rounded" value={adminAdvType} onChange={e => setAdminAdvType(e.target.value)}>
+                  <select className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-blue-100 outline-none" value={adminAdvType} onChange={e => setAdminAdvType(e.target.value)}>
                       <option value="">-- Chọn loại --</option>
                       {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
               </div>
               <div className="sm:col-span-2">
                   <label className="text-xs font-semibold text-gray-600">Ghi chú</label>
-                  <input type="text" className="w-full p-2 text-sm border rounded" value={adminAdvNote} onChange={e => setAdminAdvNote(e.target.value)} placeholder="Chi tiết..." />
+                  <input type="text" className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-blue-100 outline-none" value={adminAdvNote} onChange={e => setAdminAdvNote(e.target.value)} placeholder="Chi tiết..." />
               </div>
           </div>
-          <Button className="w-full mt-4" onClick={handleAdminCreateAdvance}>Phê duyệt & Phát hành</Button>
+          <Button className="w-full mt-4 py-3" onClick={handleAdminCreateAdvance}>Phê duyệt & Phát hành</Button>
       </Card>
 
-      <Card>
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+      <Card className="p-0 overflow-hidden">
+          <h2 className="text-lg font-bold text-gray-800 p-4 sm:p-6 border-b flex items-center gap-2">
               <IconCheckCircle className="w-6 h-6 text-[#2c4aa0]" /> Quản lý danh sách Tạm ứng
           </h2>
           <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-600">
+              <table className="w-full text-left text-sm text-gray-600 min-w-[700px]">
                   <thead className="bg-gray-50 text-gray-900 font-semibold border-b">
                       <tr>
                           <th className="p-3">Ngày</th>
@@ -971,14 +1000,14 @@ export default function App() {
                   <tbody>
                       {advanceRequests.sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(req => (
                           <tr key={req.id} className="border-b hover:bg-gray-50">
-                              <td className="p-3">{formatDate(req.requestDate)}</td>
-                              <td className="p-3 font-medium text-gray-800">{req.driverName}</td>
-                              <td className="p-3 font-bold text-[#2c4aa0]">{formatCurrency(req.amount)}</td>
+                              <td className="p-3 whitespace-nowrap">{formatDate(req.requestDate)}</td>
+                              <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{req.driverName}</td>
+                              <td className="p-3 font-bold text-[#2c4aa0] whitespace-nowrap">{formatCurrency(req.amount)}</td>
                               <td className="p-3 text-center">
                                 {req.isSettled ? (
-                                    <span className="text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-full">Đã hoàn ({formatDate(req.settlementDate!)})</span>
+                                    <span className="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-1 rounded-full whitespace-nowrap">Đã hoàn ({formatDate(req.settlementDate!)})</span>
                                 ) : req.status === RequestStatus.APPROVED ? (
-                                    <button onClick={() => handleMarkAdvanceSettled(req.id)} className="text-[10px] bg-slate-100 hover:bg-emerald-100 hover:text-emerald-600 px-2 py-1 rounded font-black transition-colors uppercase">Xác nhận hoàn</button>
+                                    <button onClick={() => handleMarkAdvanceSettled(req.id)} className="text-[9px] bg-slate-100 hover:bg-emerald-100 hover:text-emerald-600 px-2 py-1 rounded font-black transition-colors uppercase whitespace-nowrap">Xác nhận hoàn</button>
                                 ) : '-'}
                               </td>
                               <td className="p-3 text-center"><Badge status={req.status} /></td>
@@ -1000,37 +1029,37 @@ export default function App() {
 
   const renderApproveExpense = () => (
     <div className="space-y-6 animate-fade-in">
-      <Card className="border-l-4 border-rose-500">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+      <Card className="border-l-4 border-rose-500 p-0 overflow-hidden">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 p-4 sm:p-6 border-b flex items-center gap-2">
               <IconReceipt className="w-6 h-6 text-rose-500" /> Phê duyệt Chi phí Tài xế
           </h2>
           <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-600">
+              <table className="w-full text-left text-sm text-gray-600 min-w-[800px]">
                   <thead className="bg-gray-50 text-gray-900 font-semibold border-b">
                       <tr>
-                          <th className="p-3">Ngày chi</th>
-                          <th className="p-3">Tài xế</th>
-                          <th className="p-3">Hạng mục</th>
-                          <th className="p-3">Số tiền</th>
-                          <th className="p-3">Diễn giải</th>
-                          <th className="p-3 text-center">Trạng thái</th>
-                          <th className="p-3 text-right">Tác vụ</th>
+                          <th className="p-4">Ngày chi</th>
+                          <th className="p-4">Tài xế</th>
+                          <th className="p-4">Hạng mục</th>
+                          <th className="p-4">Số tiền</th>
+                          <th className="p-4">Diễn giải</th>
+                          <th className="p-4 text-center">Trạng thái</th>
+                          <th className="p-4 text-right">Tác vụ</th>
                       </tr>
                   </thead>
                   <tbody>
                       {expenseRecords.sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()).map(req => (
                           <tr key={req.id} className="border-b hover:bg-gray-50 transition-colors">
-                              <td className="p-3 whitespace-nowrap">{formatDate(req.expenseDate)}</td>
-                              <td className="p-3 font-bold text-slate-800">{req.driverName}</td>
-                              <td className="p-3">
-                                <span className="bg-blue-50 text-[#2c4aa0] px-2 py-0.5 rounded text-xs font-bold">
+                              <td className="p-4 whitespace-nowrap">{formatDate(req.expenseDate)}</td>
+                              <td className="p-4 font-bold text-slate-800 whitespace-nowrap">{req.driverName}</td>
+                              <td className="p-4">
+                                <span className="bg-blue-50 text-[#2c4aa0] px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">
                                   {expenseCategories.find(c => c.id === req.categoryId)?.name || 'Khác'}
                                 </span>
                               </td>
-                              <td className="p-3 font-black text-[#2c4aa0]">{formatCurrency(req.amount)}</td>
-                              <td className="p-3 text-xs italic text-slate-500 max-w-[200px] truncate" title={req.description}>{req.description || '-'}</td>
-                              <td className="p-3 text-center"><Badge status={req.status} /></td>
-                              <td className="p-3 text-right">
+                              <td className="p-4 font-black text-[#2c4aa0] whitespace-nowrap">{formatCurrency(req.amount)}</td>
+                              <td className="p-4 text-xs italic text-slate-500 max-w-[200px] truncate" title={req.description}>{req.description || '-'}</td>
+                              <td className="p-4 text-center"><Badge status={req.status} /></td>
+                              <td className="p-4 text-right">
                                   <div className="flex justify-end gap-2">
                                       {req.status === RequestStatus.PENDING && (
                                         <>
@@ -2747,91 +2776,327 @@ export default function App() {
 
   if (!currentUser) return renderLogin();
 
-  const DriverView = () => (
-    <div className="max-w-xl mx-auto space-y-8 animate-fade-in">
-        <div className="bg-white rounded-2xl p-1.5 border border-gray-100 shadow-sm flex sticky top-20 z-10 backdrop-blur-md bg-white/90">
-            <button onClick={() => setDriverTab('FUEL')} className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all ${driverTab === 'FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
-              <IconGasPump className="w-6 h-6 mb-1" /><span className="text-[10px] font-bold uppercase">Đổ dầu</span>
-            </button>
-            <button onClick={() => setDriverTab('EXPENSE')} className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all ${driverTab === 'EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
-              <IconReceipt className="w-6 h-6 mb-1" /><span className="text-[10px] font-bold uppercase">Ghi chi phí</span>
-            </button>
-            <button onClick={() => setDriverTab('ADVANCE')} className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all ${driverTab === 'ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
-              <IconWallet className="w-6 h-6 mb-1" /><span className="text-[10px] font-bold uppercase">Tạm ứng</span>
-            </button>
-        </div>
+  const DriverView = () => {
+    const driverEarnings = useMemo(() => {
+        return salaryRecords
+            .filter(r => r.driverName === currentUser?.fullName)
+            .reduce((sum, r) => sum + r.tripSalary + r.handlingFee, 0);
+    }, [currentUser, salaryRecords]);
 
-        {driverTab === 'FUEL' && (
-            <Card className="border-t-4 border-[#2c4aa0]">
-              <h2 className="text-xl font-black text-[#2c4aa0] mb-6 flex items-center gap-2">Gửi yêu cầu cấp dầu</h2>
-              <div className="space-y-5">
-                <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Ngày dự kiến đổ</label>
-                    <input type="date" value={newRequestDate} onChange={e=>setNewRequestDate(e.target.value)} className="w-full p-3 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-medium" />
-                </div>
-                <div className="p-4 bg-blue-50/50 rounded-2xl text-[#2c4aa0] border border-blue-100/50">
-                    <div className="text-[10px] font-bold uppercase opacity-60 mb-1">Xe đang sử dụng</div>
-                    <div className="text-xl font-black flex items-center gap-2">
-                        <IconTruck className="w-6 h-6" /> {autoAssignedVehicle || 'CHƯA PHÂN CÔNG'}
-                    </div>
-                </div>
-                <Button onClick={handleDriverSubmit} className="w-full py-4 text-base shadow-xl" disabled={!autoAssignedVehicle}>Gửi yêu cầu duyệt ngay</Button>
-              </div>
-            </Card>
-        )}
+    const unsettledAdvances = useMemo(() => {
+        return advanceRequests
+            .filter(r => r.driverName === currentUser?.fullName && !r.isSettled && r.status === RequestStatus.APPROVED)
+            .reduce((sum, r) => sum + r.amount, 0);
+    }, [currentUser, advanceRequests]);
 
-        {driverTab === 'EXPENSE' && (
-            <div className="space-y-6">
-              <Card className="border-t-4 border-rose-500">
-                <h2 className="text-xl font-black text-rose-500 mb-6 flex items-center gap-2">Báo cáo chi phí đã chi</h2>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Ngày chi</label>
-                        <input type="date" value={drExpDate} onChange={e=>setDrExpDate(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-rose-50 font-medium" />
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Số tiền (VNĐ)</label>
-                        <input type="number" placeholder="VD: 50000" value={drExpAmount} onChange={e=>setDrExpAmount(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-rose-50 font-black text-rose-600" />
-                    </div>
-                  </div>
-                  <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Hạng mục chi</label>
-                      <select value={drExpCategory} onChange={e=>setDrExpCategory(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-rose-50 font-bold bg-white">
-                        <option value="">-- Chọn hạng mục --</option>
-                        {expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                  </div>
-                  <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Diễn giải / Ghi chú</label>
-                      <textarea rows={3} placeholder="Mô tả cụ thể lý do chi..." value={drExpNote} onChange={e=>setDrExpNote(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl outline-none focus:ring-4 focus:ring-rose-50 text-sm" />
-                  </div>
-                  <Button onClick={handleDriverSubmitExpense} className="w-full py-4 text-base bg-rose-600 hover:bg-rose-700 shadow-xl shadow-rose-200">Gửi báo cáo chi phí</Button>
-                </div>
-              </Card>
+    const driverLicense = useMemo(() => {
+        return drivers.find(d => d.fullName === currentUser?.fullName);
+    }, [currentUser, drivers]);
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest px-2">Lịch sử chi gần đây</h3>
-                {expenseRecords.filter(e => e.driverName === currentUser.fullName).slice(0, 10).map(exp => (
-                  <Card key={exp.id} className="p-4 border-none shadow-sm flex items-center justify-between group">
-                    <div className="flex gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${exp.status === RequestStatus.APPROVED ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                        <IconReceipt className="w-6 h-6"/>
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-slate-400">{formatDate(exp.expenseDate)} - {expenseCategories.find(c => c.id === exp.categoryId)?.name}</div>
-                        <div className="font-black text-slate-700">{formatCurrency(exp.amount)}</div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{exp.description}</div>
-                      </div>
+    const currentDriverVehicle = useMemo(() => {
+        return getAssignedVehicle(currentUser?.fullName || '', new Date().toISOString().split('T')[0], assignments);
+    }, [currentUser, assignments]);
+
+    const myFuelRequests = useMemo(() => {
+        return requests.filter(r => r.driverName === currentUser?.fullName);
+    }, [currentUser, requests]);
+
+    const myExpenseRequests = useMemo(() => {
+        return expenseRecords.filter(r => r.driverName === currentUser?.fullName);
+    }, [currentUser, expenseRecords]);
+
+    const myAdvanceRequests = useMemo(() => {
+        return advanceRequests.filter(r => r.driverName === currentUser?.fullName);
+    }, [currentUser, advanceRequests]);
+
+    const mySalaryRecords = useMemo(() => {
+        return salaryRecords.filter(r => r.driverName === currentUser?.fullName);
+    }, [currentUser, salaryRecords]);
+
+    return (
+        <div className="max-w-xl mx-auto space-y-6 sm:space-y-8 animate-fade-in pb-20">
+            {/* Header / Info Section */}
+            <div className="bg-[#2c4aa0] rounded-3xl p-6 text-white shadow-xl shadow-blue-200 relative overflow-hidden">
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                                <IconUser className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="font-black text-xl leading-tight">{currentUser.fullName}</h2>
+                                <p className="text-blue-100 text-[10px] font-bold uppercase tracking-widest">Tài xế chuyên nghiệp</p>
+                            </div>
+                        </div>
+                        {driverLicense && (
+                            <div className={`px-3 py-1 rounded-full text-[9px] font-black border ${checkInspectionExpiry(driverLicense.expiryDate) ? 'bg-rose-500 border-rose-400' : 'bg-white/10 border-white/20'}`}>
+                                Hạn GPLX: {formatDate(driverLicense.expiryDate)}
+                            </div>
+                        )}
                     </div>
-                    <Badge status={exp.status}/>
-                  </Card>
-                ))}
-              </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-6">
+                        <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
+                            <div className="text-[9px] font-black text-blue-200 uppercase tracking-tighter mb-1">Xe đang vận hành</div>
+                            <div className="text-base font-black flex items-center gap-2">
+                                <IconTruck className="w-4 h-4" /> {currentDriverVehicle || 'Chưa nhận'}
+                            </div>
+                        </div>
+                        <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
+                            <div className="text-[9px] font-black text-blue-200 uppercase tracking-tighter mb-1">Nợ tạm ứng</div>
+                            <div className="text-base font-black flex items-center gap-2">
+                                <IconWallet className="w-4 h-4" /> {formatCurrency(unsettledAdvances)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/5 rounded-full"></div>
+                <div className="absolute -left-10 -top-10 w-32 h-32 bg-white/5 rounded-full"></div>
             </div>
-        )}
-    </div>
-  );
+
+            {/* Navigation Tabs */}
+            <div className="bg-white/80 rounded-2xl p-1.5 border shadow-sm flex sticky top-16 sm:top-20 z-20 backdrop-blur-md overflow-x-auto no-scrollbar">
+                <button onClick={() => setDriverTab('DASHBOARD')} className={`flex-1 flex flex-col items-center justify-center py-2 min-w-[70px] rounded-xl transition-all ${driverTab === 'DASHBOARD' ? 'bg-[#2c4aa0] text-white shadow-lg' : 'text-slate-400'}`}>
+                    <IconHome className="w-5 h-5 mb-0.5" /><span className="text-[9px] font-bold uppercase">Trang chủ</span>
+                </button>
+                <button onClick={() => setDriverTab('TRIPS')} className={`flex-1 flex flex-col items-center justify-center py-2 min-w-[70px] rounded-xl transition-all ${driverTab === 'TRIPS' ? 'bg-[#2c4aa0] text-white shadow-lg' : 'text-slate-400'}`}>
+                    <IconCurrency className="w-5 h-5 mb-0.5" /><span className="text-[9px] font-bold uppercase">Lương</span>
+                </button>
+                <button onClick={() => setDriverTab('FUEL')} className={`flex-1 flex flex-col items-center justify-center py-2 min-w-[70px] rounded-xl transition-all ${driverTab === 'FUEL' ? 'bg-[#2c4aa0] text-white shadow-lg' : 'text-slate-400'}`}>
+                    <IconGasPump className="w-5 h-5 mb-0.5" /><span className="text-[9px] font-bold uppercase">Đổ dầu</span>
+                </button>
+                <button onClick={() => setDriverTab('EXPENSE')} className={`flex-1 flex flex-col items-center justify-center py-2 min-w-[70px] rounded-xl transition-all ${driverTab === 'EXPENSE' ? 'bg-[#2c4aa0] text-white shadow-lg' : 'text-slate-400'}`}>
+                    <IconReceipt className="w-5 h-5 mb-0.5" /><span className="text-[9px] font-bold uppercase">Chi phí</span>
+                </button>
+                <button onClick={() => setDriverTab('ADVANCE')} className={`flex-1 flex flex-col items-center justify-center py-2 min-w-[70px] rounded-xl transition-all ${driverTab === 'ADVANCE' ? 'bg-[#2c4aa0] text-white shadow-lg' : 'text-slate-400'}`}>
+                    <IconWallet className="w-5 h-5 mb-0.5" /><span className="text-[9px] font-bold uppercase">Tạm ứng</span>
+                </button>
+            </div>
+
+            {/* Dashboard View */}
+            {driverTab === 'DASHBOARD' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <Card className="bg-emerald-50 border-emerald-100 py-6 text-center">
+                            <IconChartBar className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                            <div className="text-[10px] font-black text-emerald-400 uppercase mb-1">Thu nhập ước tính</div>
+                            <div className="text-xl font-black text-emerald-700">{formatCurrency(driverEarnings)}</div>
+                        </Card>
+                        <Card className="bg-indigo-50 border-indigo-100 py-6 text-center">
+                            <IconTruck className="w-6 h-6 text-indigo-600 mx-auto mb-2" />
+                            <div className="text-[10px] font-black text-indigo-400 uppercase mb-1">Số chuyến đã chạy</div>
+                            <div className="text-xl font-black text-indigo-700">{mySalaryRecords.length} chuyến</div>
+                        </Card>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[2px] px-2">Hoạt động gần nhất</h3>
+                        {mySalaryRecords.slice(0, 5).map(record => (
+                            <Card key={record.id} className="p-4 border-none shadow-sm flex items-center justify-between group">
+                                <div className="flex gap-4">
+                                    <div className="w-10 h-10 bg-blue-50 text-[#2c4aa0] rounded-xl flex items-center justify-center shrink-0">
+                                        <IconTruck className="w-5 h-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-bold text-slate-400">{formatDate(record.transportDate)} - {record.cargoType}</div>
+                                        <div className="font-bold text-slate-700 text-sm truncate">{record.pickupWarehouse} → {record.deliveryWarehouse}</div>
+                                        <div className="text-[9px] font-black text-[#2c4aa0] mt-1">Lương: {formatCurrency(record.tripSalary)}</div>
+                                    </div>
+                                </div>
+                                <IconCheckCircle className="w-5 h-5 text-emerald-500 opacity-30 group-hover:opacity-100 transition-opacity" />
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Trips View */}
+            {driverTab === 'TRIPS' && (
+                <div className="space-y-4">
+                    <h2 className="text-lg font-black text-[#2c4aa0] px-2 flex items-center gap-2"><IconDocument className="w-5 h-5" /> Lịch sử vận chuyển</h2>
+                    {mySalaryRecords.length === 0 ? (
+                        <div className="text-center py-20 text-slate-300 italic text-sm">Chưa có dữ liệu chuyến hàng.</div>
+                    ) : mySalaryRecords.sort((a,b) => new Date(b.transportDate).getTime() - new Date(a.transportDate).getTime()).map(record => (
+                        <Card key={record.id} className="border-l-4 border-[#2c4aa0] p-4">
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="text-[10px] font-bold bg-blue-50 text-[#2c4aa0] px-2 py-0.5 rounded-full">{record.transportDate}</div>
+                                <div className="text-sm font-black text-emerald-600">{formatCurrency(record.tripSalary + record.handlingFee)}</div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#2c4aa0]"></div>
+                                    <div className="text-xs text-slate-600"><span className="font-bold">Từ:</span> {record.pickupWarehouse}</div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                    <div className="text-xs text-slate-600"><span className="font-bold">Đến:</span> {record.deliveryWarehouse}</div>
+                                </div>
+                            </div>
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <div>Hàng: {record.cargoType}</div>
+                                <div>Cont: {record.containerNo}</div>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Fuel View */}
+            {driverTab === 'FUEL' && (
+                <div className="space-y-6">
+                    <Card className="border-t-4 border-[#2c4aa0]">
+                        <h2 className="text-lg font-black text-[#2c4aa0] mb-6 flex items-center gap-2"><IconPlus className="w-5 h-5" /> Yêu cầu đổ dầu</h2>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Ngày dự kiến đổ</label>
+                                <input type="date" value={newRequestDate} onChange={e=>setNewRequestDate(e.target.value)} className="w-full p-3 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 font-medium" />
+                            </div>
+                            <div className="p-4 bg-blue-50/50 rounded-2xl text-[#2c4aa0] border border-blue-100/50">
+                                <div className="text-[10px] font-bold uppercase opacity-60 mb-1">Xe đang sử dụng</div>
+                                <div className="text-lg font-black flex items-center gap-2">
+                                    <IconTruck className="w-6 h-6" /> {autoAssignedVehicle || 'CHƯA PHÂN CÔNG'}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Ghi chú (KM hoặc lý do)</label>
+                                <textarea value={newRequestNote} onChange={e=>setNewRequestNote(e.target.value)} className="w-full p-3 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-50 text-sm" placeholder="Nhập ghi chú nếu có..." />
+                            </div>
+                            <Button onClick={handleDriverSubmit} className="w-full py-4 text-base shadow-xl" disabled={!autoAssignedVehicle}>Gửi yêu cầu phê duyệt</Button>
+                        </div>
+                    </Card>
+
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Lịch sử đổ dầu gần đây</h3>
+                        {myFuelRequests.slice(0, 10).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(fuel => (
+                            <Card key={fuel.id} className="p-4 border-none shadow-sm flex items-center justify-between gap-4">
+                                <div className="flex gap-3 min-w-0">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${fuel.status === RequestStatus.APPROVED ? 'bg-blue-50 text-[#2c4aa0]' : 'bg-amber-50 text-amber-600'}`}><IconGasPump className="w-5 h-5"/></div>
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] font-bold text-slate-400">{formatDate(fuel.requestDate)} - {fuel.licensePlate}</div>
+                                        <div className="font-black text-slate-700 text-sm">
+                                            {fuel.isFullTank ? 'Đầy bình' : fuel.approvedAmount ? formatCurrency(fuel.approvedAmount) : 'Chờ định mức'}
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 truncate italic">{fuel.notes}</div>
+                                    </div>
+                                </div>
+                                <Badge status={fuel.status}/>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Expense View */}
+            {driverTab === 'EXPENSE' && (
+                <div className="space-y-6">
+                    <Card className="border-t-4 border-rose-500">
+                        <h2 className="text-lg font-black text-rose-500 mb-6 flex items-center gap-2"><IconReceipt className="w-5 h-5" /> Báo cáo chi phí nghiệp vụ</h2>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Ngày chi</label>
+                                    <input type="date" value={drExpDate} onChange={e=>setDrExpDate(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-4 focus:ring-rose-50 text-[11px] sm:text-sm" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Số tiền (VNĐ)</label>
+                                    <input type="number" value={drExpAmount} onChange={e=>setDrExpAmount(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-4 focus:ring-rose-50 font-black text-rose-600 text-[11px] sm:text-sm" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Hạng mục chi</label>
+                                <select value={drExpCategory} onChange={e=>setDrExpCategory(e.target.value)} className="w-full p-3 border rounded-xl outline-none bg-white text-[11px] sm:text-sm">
+                                    <option value="">-- Chọn hạng mục --</option>
+                                    {expenseCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Diễn giải / Ghi chú</label>
+                                <textarea rows={2} value={drExpNote} onChange={e=>setDrExpNote(e.target.value)} className="w-full p-3 border rounded-xl outline-none text-[11px] sm:text-sm" placeholder="Mô tả cụ thể..." />
+                            </div>
+                            <Button onClick={handleDriverSubmitExpense} className="w-full py-4 text-sm sm:text-base bg-rose-600 hover:bg-rose-700 shadow-xl shadow-rose-100">Gửi báo cáo chi</Button>
+                        </div>
+                    </Card>
+
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase px-2 tracking-widest">Lịch sử chi gần đây</h3>
+                        {myExpenseRequests.slice(0, 10).sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()).map(exp => (
+                            <Card key={exp.id} className="p-3 sm:p-4 border-none shadow-sm flex items-center justify-between gap-4">
+                                <div className="flex gap-3 min-w-0">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${exp.status === RequestStatus.APPROVED ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}><IconReceipt className="w-5 h-5"/></div>
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] font-bold text-slate-400 truncate">{formatDate(exp.expenseDate)} - {expenseCategories.find(c => c.id === exp.categoryId)?.name}</div>
+                                        <div className="font-black text-slate-700 text-sm">{formatCurrency(exp.amount)}</div>
+                                        <div className="text-[9px] text-slate-400 truncate italic">{exp.description}</div>
+                                    </div>
+                                </div>
+                                <Badge status={exp.status}/>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Advance View */}
+            {driverTab === 'ADVANCE' && (
+                <div className="space-y-6">
+                    <Card className="border-t-4 border-amber-500">
+                        <h2 className="text-lg font-black text-amber-500 mb-6 flex items-center gap-2"><IconWallet className="w-5 h-5" /> Yêu cầu tạm ứng</h2>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Ngày yêu cầu</label>
+                                    <input type="date" value={drAdvDate} onChange={e=>setDrAdvDate(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-4 focus:ring-amber-50 text-[11px] sm:text-sm" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Số tiền (VNĐ)</label>
+                                    <input type="number" value={drAdvAmount} onChange={e=>setDrAdvAmount(e.target.value)} className="w-full p-3 border rounded-xl outline-none focus:ring-4 focus:ring-amber-50 font-black text-amber-600 text-[11px] sm:text-sm" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lý do tạm ứng</label>
+                                <select value={drAdvType} onChange={e=>setDrAdvType(e.target.value)} className="w-full p-3 border rounded-xl outline-none bg-white text-[11px] sm:text-sm">
+                                    <option value="">-- Chọn lý do --</option>
+                                    {advanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Chi tiết lý do</label>
+                                <textarea rows={2} value={drAdvNote} onChange={e=>setDrAdvNote(e.target.value)} className="w-full p-3 border rounded-xl outline-none text-[11px] sm:text-sm" placeholder="Ví dụ: Tạm ứng ăn uống chuyến đi dài..." />
+                            </div>
+                            <Button onClick={handleDriverSubmitAdvance} className="w-full py-4 text-sm sm:text-base bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-100">Gửi yêu cầu tạm ứng</Button>
+                        </div>
+                    </Card>
+
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase px-2 tracking-widest">Lịch sử tạm ứng</h3>
+                        {myAdvanceRequests.slice(0, 10).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()).map(adv => (
+                            <Card key={adv.id} className="p-3 sm:p-4 border-none shadow-sm flex items-center justify-between gap-4">
+                                <div className="flex gap-3 min-w-0">
+                                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0"><IconWallet className="w-5 h-5"/></div>
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] font-bold text-slate-400 truncate">{formatDate(adv.requestDate)} - {advanceTypes.find(t => t.id === adv.typeId)?.name}</div>
+                                        <div className="font-black text-slate-700 text-sm">{formatCurrency(adv.amount)}</div>
+                                        <div className="flex gap-2 mt-1">
+                                            <Badge status={adv.status}/>
+                                            {adv.status === RequestStatus.APPROVED && (
+                                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${adv.isSettled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                    {adv.isSettled ? 'Đã hoàn' : 'Chưa hoàn'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <IconCopy className="w-4 h-4 text-slate-200 cursor-pointer hover:text-blue-500" title="Sao chép" />
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+  };
 
   return (
     <div className="min-h-screen pb-12" style={{ backgroundColor: BG_COLOR }}>
@@ -2993,6 +3258,14 @@ export default function App() {
         }
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
       `}</style>
     </div>
